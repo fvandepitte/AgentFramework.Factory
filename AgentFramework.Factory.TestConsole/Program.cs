@@ -19,6 +19,12 @@ app.Configure(config =>
         .WithExample(new[] { "list" })
         .WithExample(new[] { "list", "--verbose" });
     
+    config.AddCommand<ListToolsCommand>("list-tools")
+        .WithDescription("List all discovered tools")
+        .WithExample(new[] { "list-tools" })
+        .WithExample(new[] { "list-tools", "--verbose" })
+        .WithExample(new[] { "list-tools", "--provider", "local" });
+    
     config.AddCommand<ShowCommand>("show")
         .WithDescription("Show details of a specific agent")
         .WithExample(new[] { "show", "WeatherAssistant" });

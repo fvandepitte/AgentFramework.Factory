@@ -16,4 +16,5 @@ public class LoadedAgent
     public string Instructions { get; set; } = string.Empty;
     public string SourceFile { get; set; } = string.Empty;
     public string Provider { get; set; } = string.Empty;
+    public List<string> Tools { get; set; } = new();
 }
