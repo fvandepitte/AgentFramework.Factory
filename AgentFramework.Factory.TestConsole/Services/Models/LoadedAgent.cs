@@ -1,4 +1,4 @@
-namespace AgentFramework.Factory.TestConsole.Services;
+namespace AgentFramework.Factory.TestConsole.Services.Models;
 
 /// <summary>
 /// Represents a loaded agent with its configuration

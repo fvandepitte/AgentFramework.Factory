@@ -1,6 +1,5 @@
 using System.ComponentModel;
-using AgentFramework.Factory.TestConsole.Services;
-using Microsoft.Extensions.Configuration;
+using AgentFramework.Factory.TestConsole.Services.Factories;
 using Spectre.Console;
 using Spectre.Console.Cli;
 
@@ -11,12 +10,15 @@ namespace AgentFramework.Factory.TestConsole.Commands;
 /// </summary>
 public class ListCommand : Command<ListCommand.Settings>
 {
+    private readonly MarkdownAgentFactory _factory;
+
+    public ListCommand(MarkdownAgentFactory factory)
+    {
+        _factory = factory ?? throw new ArgumentNullException(nameof(factory));
+    }
+
     public class Settings : CommandSettings
     {
-        [Description("Path to configuration file")]
-        [CommandOption("-c|--config")]
-        public string? ConfigPath { get; set; }
-
         [Description("Show detailed information")]
         [CommandOption("-v|--verbose")]
         public bool Verbose { get; set; }
@@ -24,22 +26,14 @@ public class ListCommand : Command<ListCommand.Settings>
 
     public override int Execute(CommandContext context, Settings settings, CancellationToken cancellationToken)
     {
-        var config = ConfigurationLoader.LoadConfiguration(settings.ConfigPath);
-        var factory = new MarkdownAgentFactory(config);
-
         AnsiConsole.Write(new FigletText("Agent List").Color(Color.Blue));
-        AnsiConsole.WriteLine();
-
-        AnsiConsole.MarkupLine($"[grey]Agent Definitions Path:[/] [yellow]{config.AgentFactory.AgentDefinitionsPath}[/]");
-        AnsiConsole.MarkupLine($"[grey]File Pattern:[/] [yellow]{config.AgentFactory.AgentFilePattern}[/]");
-        AnsiConsole.MarkupLine($"[grey]Default Provider:[/] [yellow]{config.AgentFactory.DefaultProvider}[/]");
         AnsiConsole.WriteLine();
 
         var agents = AnsiConsole.Status()
             .Start("Loading agents...", ctx =>
             {
                 ctx.Spinner(Spinner.Known.Dots);
-                return factory.LoadAgentsFromConfiguration();
+                return _factory.LoadAgentsFromConfiguration();
             });
 
         if (agents.Count == 0)

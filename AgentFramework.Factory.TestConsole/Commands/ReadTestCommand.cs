@@ -1,5 +1,5 @@
 using System.ComponentModel;
-using AgentFramework.Factory.TestConsole.Services;
+using AgentFramework.Factory.TestConsole.Services.Factories;
 using Spectre.Console;
 using Spectre.Console.Cli;
 
@@ -10,15 +10,18 @@ namespace AgentFramework.Factory.TestConsole.Commands;
 /// </summary>
 public class ReadTestCommand : Command<ReadTestCommand.Settings>
 {
+    private readonly MarkdownAgentFactory _factory;
+
+    public ReadTestCommand(MarkdownAgentFactory factory)
+    {
+        _factory = factory ?? throw new ArgumentNullException(nameof(factory));
+    }
+
     public class Settings : CommandSettings
     {
         [Description("Path to the markdown file to test")]
         [CommandArgument(0, "<markdown-file>")]
         public string MarkdownPath { get; set; } = string.Empty;
-
-        [Description("Path to configuration file")]
-        [CommandOption("-c|--config")]
-        public string? ConfigPath { get; set; }
     }
 
     public override int Execute(CommandContext context, Settings settings, CancellationToken cancellationToken)
@@ -28,9 +31,6 @@ public class ReadTestCommand : Command<ReadTestCommand.Settings>
             AnsiConsole.MarkupLine($"[red]✗[/] File not found: [yellow]{settings.MarkdownPath}[/]");
             return 1;
         }
-
-        var config = ConfigurationLoader.LoadConfiguration(settings.ConfigPath);
-        var factory = new MarkdownAgentFactory(config);
 
         AnsiConsole.Write(new FigletText("Read Test").Color(Color.Green));
         AnsiConsole.WriteLine();
@@ -44,7 +44,7 @@ public class ReadTestCommand : Command<ReadTestCommand.Settings>
                 .Start("Parsing markdown file...", ctx =>
                 {
                     ctx.Spinner(Spinner.Known.Dots);
-                    return factory.LoadAgentFromFile(settings.MarkdownPath);
+                    return _factory.LoadAgentFromFile(settings.MarkdownPath);
                 });
 
             AnsiConsole.MarkupLine("[green]✓[/] Successfully parsed agent definition");

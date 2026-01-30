@@ -1,6 +1,5 @@
 using System.ComponentModel;
-using AgentFramework.Factory.TestConsole.Services;
-using Microsoft.Extensions.Configuration;
+using AgentFramework.Factory.TestConsole.Services.Factories;
 using Spectre.Console;
 using Spectre.Console.Cli;
 
@@ -11,23 +10,23 @@ namespace AgentFramework.Factory.TestConsole.Commands;
 /// </summary>
 public class ShowCommand : Command<ShowCommand.Settings>
 {
+    private readonly MarkdownAgentFactory _factory;
+
+    public ShowCommand(MarkdownAgentFactory factory)
+    {
+        _factory = factory ?? throw new ArgumentNullException(nameof(factory));
+    }
+
     public class Settings : CommandSettings
     {
         [Description("Name of the agent to show")]
         [CommandArgument(0, "<agent-name>")]
         public string AgentName { get; set; } = string.Empty;
-
-        [Description("Path to configuration file")]
-        [CommandOption("-c|--config")]
-        public string? ConfigPath { get; set; }
     }
 
     public override int Execute(CommandContext context, Settings settings, CancellationToken cancellationToken)
     {
-        var config = ConfigurationLoader.LoadConfiguration(settings.ConfigPath);
-        var factory = new MarkdownAgentFactory(config);
-
-        var agents = factory.LoadAgentsFromConfiguration();
+        var agents = _factory.LoadAgentsFromConfiguration();
         var agent = agents.FirstOrDefault(a => 
             a.Name.Equals(settings.AgentName, StringComparison.OrdinalIgnoreCase));
 

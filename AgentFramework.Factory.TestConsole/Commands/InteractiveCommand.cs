@@ -1,5 +1,6 @@
 using System.ComponentModel;
-using AgentFramework.Factory.TestConsole.Services;
+using AgentFramework.Factory.TestConsole.Services.Factories;
+using AgentFramework.Factory.TestConsole.Services.Models;
 using Spectre.Console;
 using Spectre.Console.Cli;
 
@@ -10,18 +11,19 @@ namespace AgentFramework.Factory.TestConsole.Commands;
 /// </summary>
 public class InteractiveCommand : Command<InteractiveCommand.Settings>
 {
+    private readonly MarkdownAgentFactory _factory;
+
+    public InteractiveCommand(MarkdownAgentFactory factory)
+    {
+        _factory = factory ?? throw new ArgumentNullException(nameof(factory));
+    }
+
     public class Settings : CommandSettings
     {
-        [Description("Path to configuration file")]
-        [CommandOption("-c|--config")]
-        public string? ConfigPath { get; set; }
     }
 
     public override int Execute(CommandContext context, Settings settings, CancellationToken cancellationToken)
     {
-        var config = ConfigurationLoader.LoadConfiguration(settings.ConfigPath);
-        var factory = new MarkdownAgentFactory(config);
-
         AnsiConsole.Write(new FigletText("Agent Explorer").Color(Color.Cyan1));
         AnsiConsole.WriteLine();
 
@@ -29,7 +31,7 @@ public class InteractiveCommand : Command<InteractiveCommand.Settings>
             .Start("Loading agents...", ctx =>
             {
                 ctx.Spinner(Spinner.Known.Dots);
-                return factory.LoadAgentsFromConfiguration();
+                return _factory.LoadAgentsFromConfiguration();
             });
 
         if (agents.Count == 0)

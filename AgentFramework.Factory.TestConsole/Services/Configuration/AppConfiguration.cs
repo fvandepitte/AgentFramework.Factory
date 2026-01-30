@@ -1,6 +1,6 @@
 using YamlDotNet.Serialization;
 
-namespace AgentFramework.Factory.TestConsole.Services;
+namespace AgentFramework.Factory.TestConsole.Services.Configuration;
 
 /// <summary>
 /// Root configuration model for the application
@@ -22,6 +22,11 @@ public class AgentFactoryConfiguration
     public string OutputPath { get; set; } = "./generated";
     public bool AutoReload { get; set; } = false;
     public string DefaultProvider { get; set; } = "azureOpenAI";
+    /// <summary>
+    /// Chain of providers to try in order (e.g., ["azureOpenAI", "openAI", "githubModels"])
+    /// If not specified, only the DefaultProvider is used
+    /// </summary>
+    public List<string> ProviderChain { get; set; } = new();
     public bool EnableLogging { get; set; } = true;
     public string LogLevel { get; set; } = "Information";
 }

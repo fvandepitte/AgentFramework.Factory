@@ -1,7 +1,14 @@
 ﻿using AgentFramework.Factory.TestConsole.Commands;
+using AgentFramework.Factory.TestConsole.Infrastructure;
+using Microsoft.Extensions.DependencyInjection;
 using Spectre.Console.Cli;
 
-var app = new CommandApp();
+// Setup dependency injection
+var services = new ServiceCollection();
+services.AddAgentFactoryServices();
+
+var registrar = new TypeRegistrar(services);
+var app = new CommandApp(registrar);
 
 app.Configure(config =>
 {

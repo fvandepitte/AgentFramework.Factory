@@ -279,30 +279,83 @@ This means our **Markdown-to-Agent factory** fills a real gap in the .NET ecosys
 - [x] Test markdown parsing with Markdig + YamlDotNet (successful!)
 - [x] Identify gap in .NET ecosystem for declarative agent definitions
 
-### Phase 2: Core Development
-- [ ] Create markdown schema for agent definitions
-- [ ] Implement markdown parser using Markdig
-- [ ] Build YAML frontmatter deserializer with YamlDotNet
-- [ ] Map markdown structure to Microsoft Agent Framework agent objects
-- [ ] Handle tool definitions, instructions, and metadata
+### Phase 2: Core Development ✅
+- [x] Create markdown schema for agent definitions
+- [x] Implement markdown parser using Markdig
+- [x] Build YAML frontmatter deserializer with YamlDotNet
+- [x] Map markdown structure to Microsoft Agent Framework agent objects
+- [x] Handle tool definitions, instructions, and metadata
 
-### Phase 3: Factory Pattern Implementation
-- [ ] Design factory interface for agent creation
-- [ ] Implement markdown-to-agent factory
-- [ ] Add validation and error handling
-- [ ] Support multiple agent types and configurations
+### Phase 3: Factory Pattern Implementation ✅
+- [x] Design factory interface for agent creation
+- [x] Implement markdown-to-agent factory
+- [x] Add validation and error handling
+- [x] Support multiple agent types and configurations
+- [x] **Implement Chain of Responsibility pattern for provider selection**
 
-### Phase 4: Testing & Documentation
-- [ ] Create example agent markdown files
+### Phase 4: Testing & Documentation ✅
+- [x] Create example agent markdown files
+- [x] Document usage and examples
 - [ ] Write unit tests for parser and factory
 - [ ] Build integration tests with Agent Framework
-- [ ] Document usage and examples
 
 ### Phase 5: Extension Features
 - [ ] Support agent workflow definitions
 - [ ] Enable multi-agent orchestration via markdown
 - [ ] Add template system for common agent patterns
 - [ ] Implement hot-reload for development
+
+---
+
+## Chain of Responsibility Pattern for Provider Selection
+
+**New in Phase 3**: The factory now implements the **Chain of Responsibility** design pattern for intelligent provider routing and automatic fallback.
+
+### Key Features
+
+✅ **Automatic Fallback**: If a provider cannot handle a model, the next provider in the chain is tried automatically  
+✅ **Model-Based Routing**: Each provider determines if it can handle a specific model (e.g., `gpt-4o`, `llama-3.2`)  
+✅ **Configurable Chain Order**: Define provider priority in configuration  
+✅ **Resilient to Failures**: Gracefully handles provider outages by falling back to alternatives  
+✅ **Zero Code Changes**: Just configure the provider chain, the factory handles the rest  
+
+### Configuration Example
+
+```json
+{
+  "agentFactory": {
+    "defaultProvider": "azureOpenAI",
+    "providerChain": ["azureOpenAI", "openAI", "githubModels"],
+    "enableLogging": true
+  },
+  "providers": {
+    "azureOpenAI": {
+      "endpoint": "https://my-resource.openai.azure.com",
+      "deploymentName": "gpt-4"
+    },
+    "openAI": {
+      "apiKey": "sk-...",
+      "model": "gpt-4o-mini"
+    },
+    "githubModels": {
+      "token": "ghp_...",
+      "model": "llama-3.2"
+    }
+  }
+}
+```
+
+### How It Works
+
+1. **Request**: `CreateChatClient("llama-3.2")`
+2. **Azure OpenAI**: ❌ Cannot handle this model
+3. **OpenAI**: ❌ Model not in catalog
+4. **GitHub Models**: ✅ Supports llama-3.2 → Returns client
+
+### Documentation
+
+- [CHAIN_OF_RESPONSIBILITY.md](./AgentFramework.Factory.TestConsole/CHAIN_OF_RESPONSIBILITY.md) - Complete pattern documentation
+- [CHAIN_EXAMPLE.md](./AgentFramework.Factory.TestConsole/CHAIN_EXAMPLE.md) - Usage examples and test cases
 
 ---
 
@@ -358,4 +411,4 @@ _To be determined based on project scope and organizational requirements._
 ---
 
 **Last Updated:** 2026-01-30  
-**Project Status:** Research & Planning Phase
+**Project Status:** Phase 3 Complete - Core Implementation with Chain of Responsibility Pattern

@@ -1,18 +1,25 @@
+using AgentFramework.Factory.TestConsole.Services.Configuration;
+using AgentFramework.Factory.TestConsole.Services.Factories;
 using Spectre.Console;
 using Spectre.Console.Cli;
-using AgentFramework.Factory.TestConsole.Services;
 
 namespace AgentFramework.Factory.TestConsole.Commands;
 
 public class TestAgentCommand : Command<TestAgentCommand.Settings>
 {
+    private readonly AgentFactory _agentFactory;
+    private readonly AppConfiguration _config;
+
+    public TestAgentCommand(AgentFactory agentFactory, AppConfiguration config)
+    {
+        _agentFactory = agentFactory ?? throw new ArgumentNullException(nameof(agentFactory));
+        _config = config ?? throw new ArgumentNullException(nameof(config));
+    }
+
     public class Settings : CommandSettings
     {
         [CommandArgument(0, "[agentName]")]
         public string? AgentName { get; set; }
-
-        [CommandOption("-c|--config <path>")]
-        public string ConfigFile { get; set; } = "appsettings.json";
 
         [CommandOption("-m|--message <text>")]
         public string? Message { get; set; }
@@ -22,12 +29,6 @@ public class TestAgentCommand : Command<TestAgentCommand.Settings>
     {
         try
         {
-            // Load configuration
-            var config = ConfigurationLoader.LoadConfiguration(settings.ConfigFile);
-            
-            // Create agent factory
-            var agentFactory = new AgentFactory(config);
-
             AnsiConsole.Write(
                 new FigletText("Agent Test")
                     .LeftJustified()
@@ -39,7 +40,7 @@ public class TestAgentCommand : Command<TestAgentCommand.Settings>
             if (string.IsNullOrEmpty(settings.AgentName))
             {
                 // List available agents and let user choose
-                var agents = config.Agents.Where(a => a.Enabled).ToList();
+                var agents = _config.Agents.Where(a => a.Enabled).ToList();
                 if (!agents.Any())
                 {
                     AnsiConsole.MarkupLine("[red]No enabled agents found in configuration[/]");
@@ -57,7 +58,7 @@ public class TestAgentCommand : Command<TestAgentCommand.Settings>
             }
 
             // Validate agent
-            var (isValid, errorMessage) = agentFactory.ValidateAgent(agentName);
+            var (isValid, errorMessage) = _agentFactory.ValidateAgent(agentName);
             if (!isValid)
             {
                 AnsiConsole.MarkupLine($"[red]Agent validation failed: {errorMessage}[/]");
@@ -71,7 +72,7 @@ public class TestAgentCommand : Command<TestAgentCommand.Settings>
                     ctx.Spinner(Spinner.Known.Dots);
                     ctx.SpinnerStyle(Style.Parse("green"));
 
-                    var agent = agentFactory.CreateAgentByName(agentName);
+                    var agent = _agentFactory.CreateAgentByName(agentName);
                     
                     AnsiConsole.MarkupLine($"[green]✓[/] Agent created: [bold]{agent.Name}[/]");
                 });
@@ -83,7 +84,7 @@ public class TestAgentCommand : Command<TestAgentCommand.Settings>
             // If message provided, test with that message
             if (!string.IsNullOrEmpty(settings.Message))
             {
-                TestAgentWithMessageAsync(agentFactory, agentName, settings.Message).Wait();
+                TestAgentWithMessageAsync(_agentFactory, agentName, settings.Message).Wait();
             }
             else
             {

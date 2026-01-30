@@ -1,8 +1,11 @@
+using AgentFramework.Factory.TestConsole.Services.Configuration;
+using AgentFramework.Factory.TestConsole.Services.Models;
 using Microsoft.Agents.AI;
 using Microsoft.Extensions.AI;
+using Microsoft.Extensions.Options;
 using OpenAI.Chat;
 
-namespace AgentFramework.Factory.TestConsole.Services;
+namespace AgentFramework.Factory.TestConsole.Services.Factories;
 
 /// <summary>
 /// Factory for creating fully configured AIAgent instances from markdown definitions
@@ -13,11 +16,15 @@ public class AgentFactory
     private readonly MarkdownAgentFactory markdownFactory;
     private readonly ProviderFactory providerFactory;
 
-    public AgentFactory(AppConfiguration configuration)
+    public AgentFactory(
+        IOptions<AppConfiguration> configOptions,
+        MarkdownAgentFactory markdownFactory,
+        ProviderFactory providerFactory)
     {
-        this.configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
-        this.markdownFactory = new MarkdownAgentFactory(configuration);
-        this.providerFactory = new ProviderFactory(configuration);
+        ArgumentNullException.ThrowIfNull(configOptions);
+        this.configuration = configOptions.Value;
+        this.markdownFactory = markdownFactory ?? throw new ArgumentNullException(nameof(markdownFactory));
+        this.providerFactory = providerFactory ?? throw new ArgumentNullException(nameof(providerFactory));
     }
 
     /// <summary>
@@ -156,13 +163,8 @@ public class AgentFactory
                 return (false, $"Markdown file not found: {agentConfig.MarkdownPath}");
             }
 
-            var provider = agentConfig.Provider ?? configuration.AgentFactory.DefaultProvider;
-            var (isProviderValid, providerError) = providerFactory.ValidateProvider(provider);
-
-            if (!isProviderValid)
-            {
-                return (false, $"Provider validation failed: {providerError}");
-            }
+            // Provider validation is now handled by the chain of responsibility
+            // We'll validate when attempting to create the chat client
 
             return (true, string.Empty);
         }

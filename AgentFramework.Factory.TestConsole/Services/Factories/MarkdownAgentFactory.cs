@@ -1,9 +1,12 @@
+using AgentFramework.Factory.TestConsole.Services.Configuration;
+using AgentFramework.Factory.TestConsole.Services.Models;
 using Markdig;
 using Markdig.Extensions.Yaml;
 using Markdig.Syntax;
+using Microsoft.Extensions.Options;
 using YamlDotNet.Serialization;
 
-namespace AgentFramework.Factory.TestConsole.Services;
+namespace AgentFramework.Factory.TestConsole.Services.Factories;
 
 /// <summary>
 /// Factory class for creating agents from markdown files
@@ -14,9 +17,10 @@ public class MarkdownAgentFactory
     private readonly MarkdownPipeline markdownPipeline;
     private readonly IDeserializer yamlDeserializer;
 
-    public MarkdownAgentFactory(AppConfiguration configuration)
+    public MarkdownAgentFactory(IOptions<AppConfiguration> configOptions)
     {
-        this.configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
+        ArgumentNullException.ThrowIfNull(configOptions);
+        this.configuration = configOptions.Value;
         
         // Setup Markdig pipeline with YAML frontmatter support
         markdownPipeline = new MarkdownPipelineBuilder()

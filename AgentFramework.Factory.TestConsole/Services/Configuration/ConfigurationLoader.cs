@@ -1,6 +1,6 @@
 using Microsoft.Extensions.Configuration;
 
-namespace AgentFramework.Factory.TestConsole.Services;
+namespace AgentFramework.Factory.TestConsole.Services.Configuration;
 
 /// <summary>
 /// Service for loading application configuration
