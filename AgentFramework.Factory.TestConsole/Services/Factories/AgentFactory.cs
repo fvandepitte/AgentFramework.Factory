@@ -39,33 +39,10 @@ public class AgentFactory
         // Create the chat client for this agent's provider
         var chatClient = providerFactory.CreateChatClientForAgent(loadedAgent);
 
-        // Build chat options from agent configuration
-        var chatOptions = new ChatOptions();
-
-        if (loadedAgent.Temperature > 0)
-        {
-            chatOptions.Temperature = (float)loadedAgent.Temperature;
-        }
-
-        if (loadedAgent.MaxTokens.HasValue)
-        {
-            chatOptions.MaxOutputTokens = loadedAgent.MaxTokens.Value;
-        }
-
-        if (loadedAgent.TopP.HasValue)
-        {
-            chatOptions.TopP = (float)loadedAgent.TopP.Value;
-        }
-
-        if (loadedAgent.FrequencyPenalty.HasValue)
-        {
-            chatOptions.FrequencyPenalty = (float)loadedAgent.FrequencyPenalty.Value;
-        }
-
-        if (loadedAgent.PresencePenalty.HasValue)
-        {
-            chatOptions.PresencePenalty = (float)loadedAgent.PresencePenalty.Value;
-        }
+        // TODO: ChatOptions (temperature, max_tokens, etc.) should be configured on the chat client
+        // using a builder pattern, or passed at runtime via ChatClientAgentRunOptions.
+        // For now, these are loaded from the markdown but not yet applied.
+        // See: https://learn.microsoft.com/en-us/dotnet/api/microsoft.agents.ai.chatclientagentrunoptions.chatoptions
 
         // Get tools for this agent
         var tools = new List<AITool>();
@@ -79,16 +56,13 @@ public class AgentFactory
             }
         }
 
-        // Add tools to chat options if any are available
-        if (tools.Any())
-        {
-            chatOptions.Tools = tools;
-        }
-
-        // Create the agent using AsAIAgent extension method which properly sets name and options
+        // Create the agent using AsAIAgent extension method with tools passed directly
+        // Note: Tools can also be passed via ChatOptions at runtime, but passing them here
+        // makes them part of the agent's default configuration
         var agent = chatClient.AsAIAgent(
             instructions: loadedAgent.Instructions,
-            name: loadedAgent.Name
+            name: loadedAgent.Name,
+            tools: tools.Any() ? tools : null
         );
 
         return agent;
