@@ -22,9 +22,6 @@ public class TestAgentCommand : Command<TestAgentCommand.Settings>
     {
         [CommandArgument(0, "[agentName]")]
         public string? AgentName { get; set; }
-
-        [CommandOption("-m|--message <text>")]
-        public string? Message { get; set; }
     }
 
     public override int Execute(CommandContext context, Settings settings, CancellationToken cancellationToken)
@@ -68,31 +65,25 @@ public class TestAgentCommand : Command<TestAgentCommand.Settings>
             }
 
             // Create the agent
-            AnsiConsole.Status()
+            var agent = AnsiConsole.Status()
                 .Start("Creating agent...", ctx =>
                 {
                     ctx.Spinner(Spinner.Known.Dots);
                     ctx.SpinnerStyle(Style.Parse("green"));
 
-                    var agent = _agentFactory.CreateAgentByName(agentName);
+                    var createdAgent = _agentFactory.CreateAgentByName(agentName);
                     
-                    AnsiConsole.MarkupLine($"[green]✓[/] Agent created: [bold]{agent.Name}[/]");
+                    AnsiConsole.MarkupLine($"[green]✓[/] Agent created: [bold]{createdAgent.Name}[/]");
+                    return createdAgent;
                 });
 
             AnsiConsole.WriteLine();
-            AnsiConsole.MarkupLine("[green]Agent is ready to use![/]");
+            AnsiConsole.MarkupLine("[green]Agent is ready! Starting interactive chat session...[/]");
+            AnsiConsole.MarkupLine("[dim]Type 'exit' or 'quit' to end the session[/]");
             AnsiConsole.WriteLine();
 
-            // If message provided, test with that message
-            if (!string.IsNullOrEmpty(settings.Message))
-            {
-                TestAgentWithMessageAsync(_agentFactory, agentName, settings.Message).Wait();
-            }
-            else
-            {
-                AnsiConsole.MarkupLine("[dim]Use --message to test the agent with a prompt[/]");
-                AnsiConsole.MarkupLine("[dim]Example: dotnet run -- test-agent WeatherAssistant --message \"Hello!\"[/]");
-            }
+            // Start interactive chat session
+            RunInteractiveChatAsync(agent, agentName, cancellationToken).Wait();
 
             return 0;
         }
@@ -103,41 +94,56 @@ public class TestAgentCommand : Command<TestAgentCommand.Settings>
         }
     }
 
-    private async Task TestAgentWithMessageAsync(AgentFactory factory, string agentName, string message)
+    private async Task RunInteractiveChatAsync(Microsoft.Agents.AI.AIAgent agent, string agentName, CancellationToken cancellationToken)
     {
         try
         {
-            var agent = factory.CreateAgentByName(agentName);
+            // Create a new session for the agent
+            var session = await agent.GetNewSessionAsync();
 
-            AnsiConsole.MarkupLine($"[yellow]Testing agent with message:[/] {message}");
-            AnsiConsole.WriteLine();
+            while (!cancellationToken.IsCancellationRequested)
+            {
+                // Get user input
+                var userMessage = AnsiConsole.Ask<string>("[bold blue]You:[/]");
 
-            await AnsiConsole.Status()
-                .StartAsync("Getting response...", async ctx =>
+                // Check for exit commands
+                if (string.Equals(userMessage.Trim(), "exit", StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(userMessage.Trim(), "quit", StringComparison.OrdinalIgnoreCase))
                 {
-                    ctx.Spinner(Spinner.Known.Dots);
-                    ctx.SpinnerStyle(Style.Parse("yellow"));
+                    AnsiConsole.MarkupLine("[yellow]Ending chat session. Goodbye![/]");
+                    break;
+                }
 
-                    // Create a new session for the agent
-                    var session = await agent.GetNewSessionAsync();
+                if (string.IsNullOrWhiteSpace(userMessage))
+                {
+                    continue;
+                }
 
-                    // Get agent response
-                    var response = await agent.RunAsync(message, session);
-
-                    AnsiConsole.WriteLine();
-                    var panel = new Panel(response.ToString())
+                // Get agent response
+                await AnsiConsole.Status()
+                    .StartAsync("Thinking...", async ctx =>
                     {
-                        Header = new PanelHeader($"[bold]{agentName} Response[/]"),
-                        Border = BoxBorder.Rounded,
-                        BorderStyle = new Style(Color.Green)
-                    };
-                    AnsiConsole.Write(panel);
-                });
+                        ctx.Spinner(Spinner.Known.Dots);
+                        ctx.SpinnerStyle(Style.Parse("yellow"));
+
+                        var response = await agent.RunAsync(userMessage, session);
+
+                        AnsiConsole.WriteLine();
+                        var panel = new Panel(response.ToString())
+                        {
+                            Header = new PanelHeader($"[bold green]{agentName}:[/]"),
+                            Border = BoxBorder.Rounded,
+                            BorderStyle = new Style(Color.Green)
+                        };
+                        AnsiConsole.Write(panel);
+                        AnsiConsole.WriteLine();
+                    });
+            }
         }
         catch (Exception ex)
         {
             AnsiConsole.WriteLine();
-            AnsiConsole.MarkupLine($"[red]Error testing agent: {ex.Message}[/]");
+            AnsiConsole.MarkupLine($"[red]Error in chat session: {ex.Message}[/]");
             if (ex.InnerException != null)
             {
                 AnsiConsole.MarkupLine($"[dim]{ex.InnerException.Message}[/]");

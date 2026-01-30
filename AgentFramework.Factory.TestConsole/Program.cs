@@ -33,9 +33,8 @@ app.Configure(config =>
         .WithExample(new[] { "interactive" });
     
     config.AddCommand<TestAgentCommand>("test-agent")
-        .WithDescription("Create and test an agent")
-        .WithExample(new[] { "test-agent", "WeatherAssistant" })
-        .WithExample(new[] { "test-agent", "WeatherAssistant", "--message", "Hello!" });
+        .WithDescription("Create and test an agent in an interactive chat session")
+        .WithExample(new[] { "test-agent", "WeatherAssistant" });
 });
 
 return app.Run(args);
