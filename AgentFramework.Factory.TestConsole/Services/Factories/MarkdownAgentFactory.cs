@@ -11,7 +11,7 @@ namespace AgentFramework.Factory.TestConsole.Services.Factories;
 /// <summary>
 /// Factory class for creating agents from markdown files
 /// </summary>
-public class MarkdownAgentFactory
+public class MarkdownAgentFactory : Factory.Abstractions.IMarkdownAgentFactory
 {
     private readonly AppConfiguration configuration;
     private readonly MarkdownPipeline markdownPipeline;
@@ -127,6 +127,60 @@ public class MarkdownAgentFactory
         };
 
         return LoadAgentFromMarkdown(config);
+    }
+
+    /// <summary>
+    /// Parse markdown content into a loaded agent
+    /// </summary>
+    public LoadedAgent ParseMarkdown(string markdownContent, string? provider = null)
+    {
+        // Parse the markdown document
+        var document = Markdown.Parse(markdownContent, markdownPipeline);
+        
+        // Extract YAML frontmatter
+        var yamlBlock = document.Descendants<YamlFrontMatterBlock>().FirstOrDefault();
+        
+        AgentMetadata? metadata = null;
+        if (yamlBlock != null)
+        {
+            var yamlText = string.Join("\n", yamlBlock.Lines.Lines.Select(l => l.ToString()));
+            metadata = yamlDeserializer.Deserialize<AgentMetadata>(yamlText);
+        }
+
+        if (metadata == null)
+        {
+            throw new InvalidOperationException("No YAML frontmatter found in markdown content");
+        }
+
+        // Extract markdown body as plain text (instructions)
+        var instructions = ExtractMarkdownBody(markdownContent);
+
+        // Create loaded agent
+        return new LoadedAgent
+        {
+            Name = metadata.Name,
+            Description = metadata.Description,
+            Model = metadata.Model ?? configuration.AgentFactory.DefaultProvider,
+            Temperature = metadata.Temperature,
+            MaxTokens = metadata.MaxTokens,
+            TopP = metadata.TopP,
+            FrequencyPenalty = metadata.FrequencyPenalty,
+            PresencePenalty = metadata.PresencePenalty,
+            Instructions = instructions,
+            Provider = provider ?? configuration.AgentFactory.DefaultProvider,
+            Tools = metadata.Tools ?? new List<string>()
+        };
+    }
+
+    // Explicit interface implementation
+    Factory.Abstractions.ILoadedAgent Factory.Abstractions.IMarkdownAgentFactory.LoadAgentFromFile(string markdownPath, string? provider)
+    {
+        return LoadAgentFromFile(markdownPath, provider);
+    }
+
+    Factory.Abstractions.ILoadedAgent Factory.Abstractions.IMarkdownAgentFactory.ParseMarkdown(string markdownContent, string? provider)
+    {
+        return ParseMarkdown(markdownContent, provider);
     }
 
     /// <summary>
