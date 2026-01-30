@@ -85,7 +85,8 @@ public class ProviderFactory
                 }
                 else
                 {
-                    current = current!.SetNext(handler);
+                    current!.SetNext(handler);
+                    current = handler;
                 }
             }
             else if (configuration.AgentFactory.EnableLogging)
