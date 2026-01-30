@@ -8,20 +8,35 @@ namespace AgentFramework.Factory.TestConsole.Services.Providers;
 public interface IProviderHandler
 {
     /// <summary>
+    /// Get the provider name
+    /// </summary>
+    string ProviderName { get; }
+
+    /// <summary>
+    /// Get the next handler in the chain (if any)
+    /// </summary>
+    IProviderHandler? NextHandler { get; }
+
+    /// <summary>
     /// Set the next handler in the chain
     /// </summary>
     IProviderHandler SetNext(IProviderHandler handler);
 
     /// <summary>
-    /// Try to create a chat client for the specified model
+    /// Determine if this provider can handle the specified model
     /// </summary>
-    /// <param name="modelName">The model name to create a client for</param>
-    /// <param name="client">The created chat client if successful</param>
-    /// <returns>True if this provider can handle the model, false otherwise</returns>
-    bool TryCreateChatClient(string modelName, out IChatClient? client);
+    bool CanHandleModel(string modelName);
 
     /// <summary>
-    /// Get the provider name
+    /// Create a chat client for the specified model
     /// </summary>
-    string ProviderName { get; }
+    IChatClient CreateChatClient(string modelName);
+
+    /// <summary>
+    /// Handle the model request, optionally with callbacks for logging/monitoring
+    /// </summary>
+    IChatClient? Handle(
+        string modelName, 
+        Action<IProviderHandler, string>? onSuccess = null, 
+        Action<IProviderHandler, string, Exception>? onFailure = null);
 }

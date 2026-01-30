@@ -12,18 +12,20 @@ namespace AgentFramework.Factory.TestConsole.Services.Providers;
 /// </summary>
 public class AzureOpenAIProviderHandler : BaseProviderHandler
 {
-    public AzureOpenAIProviderHandler(IOptions<AppConfiguration> configOptions) : base(configOptions)
+    private readonly AzureOpenAIConfiguration _config;
+
+    public AzureOpenAIProviderHandler(IOptions<AzureOpenAIConfiguration> azureConfigOptions)
     {
+        ArgumentNullException.ThrowIfNull(azureConfigOptions);
+        _config = azureConfigOptions.Value;
     }
 
     public override string ProviderName => "AzureOpenAI";
 
-    protected override bool CanHandleModel(string modelName)
+    public override bool CanHandleModel(string modelName)
     {
-        var config = Configuration.Providers.AzureOpenAI;
-
         // Check if Azure OpenAI is configured
-        if (string.IsNullOrEmpty(config.Endpoint) || string.IsNullOrEmpty(config.DeploymentName))
+        if (string.IsNullOrEmpty(_config.Endpoint) || string.IsNullOrEmpty(_config.DeploymentName))
         {
             return false;
         }
@@ -34,16 +36,14 @@ public class AzureOpenAIProviderHandler : BaseProviderHandler
         return true;
     }
 
-    protected override IChatClient CreateChatClient(string modelName)
+    public override IChatClient CreateChatClient(string modelName)
     {
-        var config = Configuration.Providers.AzureOpenAI;
-
-        if (string.IsNullOrEmpty(config.Endpoint))
+        if (string.IsNullOrEmpty(_config.Endpoint))
         {
             throw new InvalidOperationException("Azure OpenAI endpoint is not configured");
         }
 
-        if (string.IsNullOrEmpty(config.DeploymentName))
+        if (string.IsNullOrEmpty(_config.DeploymentName))
         {
             throw new InvalidOperationException("Azure OpenAI deployment name is not configured");
         }
@@ -51,24 +51,24 @@ public class AzureOpenAIProviderHandler : BaseProviderHandler
         // Create Azure OpenAI client with either API key or DefaultAzureCredential
         AzureOpenAIClient azureClient;
 
-        if (!string.IsNullOrEmpty(config.ApiKey))
+        if (!string.IsNullOrEmpty(_config.ApiKey))
         {
             // Use API key authentication
             azureClient = new AzureOpenAIClient(
-                new Uri(config.Endpoint),
-                new ApiKeyCredential(config.ApiKey));
+                new Uri(_config.Endpoint),
+                new ApiKeyCredential(_config.ApiKey));
         }
         else
         {
             // Use Azure CLI / Managed Identity authentication
             azureClient = new AzureOpenAIClient(
-                new Uri(config.Endpoint),
+                new Uri(_config.Endpoint),
                 new DefaultAzureCredential());
         }
 
         // Get chat client and convert to IChatClient
         IChatClient chatClient = azureClient
-            .GetChatClient(config.DeploymentName)
+            .GetChatClient(_config.DeploymentName)
             .AsIChatClient();
 
         return chatClient;

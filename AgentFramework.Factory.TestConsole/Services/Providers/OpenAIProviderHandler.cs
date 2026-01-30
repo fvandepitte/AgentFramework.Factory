@@ -10,6 +10,8 @@ namespace AgentFramework.Factory.TestConsole.Services.Providers;
 /// </summary>
 public class OpenAIProviderHandler : BaseProviderHandler
 {
+    private readonly OpenAIConfiguration _config;
+
     // Common OpenAI models
     private static readonly HashSet<string> SupportedModels = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -23,18 +25,18 @@ public class OpenAIProviderHandler : BaseProviderHandler
         "o1-preview"
     };
 
-    public OpenAIProviderHandler(IOptions<AppConfiguration> configOptions) : base(configOptions)
+    public OpenAIProviderHandler(IOptions<OpenAIConfiguration> openAIConfigOptions)
     {
+        ArgumentNullException.ThrowIfNull(openAIConfigOptions);
+        _config = openAIConfigOptions.Value;
     }
 
     public override string ProviderName => "OpenAI";
 
-    protected override bool CanHandleModel(string modelName)
+    public override bool CanHandleModel(string modelName)
     {
-        var config = Configuration.Providers.OpenAI;
-
         // Check if OpenAI is configured
-        if (string.IsNullOrEmpty(config.ApiKey))
+        if (string.IsNullOrEmpty(_config.ApiKey))
         {
             return false;
         }
@@ -43,18 +45,16 @@ public class OpenAIProviderHandler : BaseProviderHandler
         return SupportedModels.Contains(modelName);
     }
 
-    protected override IChatClient CreateChatClient(string modelName)
+    public override IChatClient CreateChatClient(string modelName)
     {
-        var config = Configuration.Providers.OpenAI;
-
-        if (string.IsNullOrEmpty(config.ApiKey))
+        if (string.IsNullOrEmpty(_config.ApiKey))
         {
             throw new InvalidOperationException("OpenAI API key is not configured");
         }
 
         // Create OpenAI chat client using OpenAI client
         var openAIClient = new OpenAI.OpenAIClient(
-            new ApiKeyCredential(config.ApiKey));
+            new ApiKeyCredential(_config.ApiKey));
 
         IChatClient chatClient = openAIClient
             .GetChatClient(modelName)

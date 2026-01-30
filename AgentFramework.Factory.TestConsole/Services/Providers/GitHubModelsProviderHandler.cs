@@ -10,6 +10,8 @@ namespace AgentFramework.Factory.TestConsole.Services.Providers;
 /// </summary>
 public class GitHubModelsProviderHandler : BaseProviderHandler
 {
+    private readonly GitHubModelsConfiguration _config;
+
     // GitHub Models supports various models through AI marketplace
     private static readonly HashSet<string> SupportedModels = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -32,18 +34,18 @@ public class GitHubModelsProviderHandler : BaseProviderHandler
         "cohere-command-r-plus"
     };
 
-    public GitHubModelsProviderHandler(IOptions<AppConfiguration> configOptions) : base(configOptions)
+    public GitHubModelsProviderHandler(IOptions<GitHubModelsConfiguration> githubConfigOptions)
     {
+        ArgumentNullException.ThrowIfNull(githubConfigOptions);
+        _config = githubConfigOptions.Value;
     }
 
     public override string ProviderName => "GitHubModels";
 
-    protected override bool CanHandleModel(string modelName)
+    public override bool CanHandleModel(string modelName)
     {
-        var config = Configuration.Providers.GitHubModels;
-
         // Check if GitHub Models is configured
-        if (string.IsNullOrEmpty(config.Token))
+        if (string.IsNullOrEmpty(_config.Token))
         {
             return false;
         }
@@ -52,18 +54,16 @@ public class GitHubModelsProviderHandler : BaseProviderHandler
         return SupportedModels.Contains(modelName);
     }
 
-    protected override IChatClient CreateChatClient(string modelName)
+    public override IChatClient CreateChatClient(string modelName)
     {
-        var config = Configuration.Providers.GitHubModels;
-
-        if (string.IsNullOrEmpty(config.Token))
+        if (string.IsNullOrEmpty(_config.Token))
         {
             throw new InvalidOperationException("GitHub token is not configured");
         }
 
         // Create GitHub Models chat client using OpenAI-compatible endpoint
         var openAIClient = new OpenAI.OpenAIClient(
-            new ApiKeyCredential(config.Token),
+            new ApiKeyCredential(_config.Token),
             new OpenAI.OpenAIClientOptions
             {
                 Endpoint = new Uri("https://models.inference.ai.azure.com")

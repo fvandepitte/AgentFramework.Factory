@@ -38,8 +38,8 @@ Copilot_Summaries/
 ├── Dependency_Injection/
 │   └── DEPENDENCY_INJECTION.md             - DI setup and service registration
 ├── Configuration/
-│   └── OPTIONS_PATTERN.md                  - IOptions<T> configuration pattern
-└── Guides/
+│   └── OPTIONS_PATTERN.md                  - IOptions<T> configuration pattern├── Logging/
+│   └── LOGGING_IMPLEMENTATION.md           - Structured logging with ILogger<T>└── Guides/
     └── ADDING_PROVIDER_EXAMPLE.md          - How to add new AI providers
 ```
 
@@ -55,7 +55,10 @@ Copilot_Summaries/
 ### ⚙️ Configuration
 - **[OPTIONS_PATTERN.md](./Configuration/OPTIONS_PATTERN.md)** - Configuration management with `IOptions<T>`, including benefits and usage examples
 
-### 📚 Guides
+### � Logging
+- **[LOGGING_IMPLEMENTATION.md](./Logging/LOGGING_IMPLEMENTATION.md)** - Structured logging with `ILogger<T>`, migration from Console.WriteLine, and configuration
+
+### �📚 Guides
 - **[ADDING_PROVIDER_EXAMPLE.md](./Guides/ADDING_PROVIDER_EXAMPLE.md)** - Step-by-step guide for adding new AI provider handlers
 
 ---

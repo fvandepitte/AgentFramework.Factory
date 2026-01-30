@@ -1,6 +1,4 @@
-using AgentFramework.Factory.TestConsole.Services.Configuration;
 using Microsoft.Extensions.AI;
-using Microsoft.Extensions.Options;
 
 namespace AgentFramework.Factory.TestConsole.Services.Providers;
 
@@ -10,15 +8,10 @@ namespace AgentFramework.Factory.TestConsole.Services.Providers;
 public abstract class BaseProviderHandler : IProviderHandler
 {
     private IProviderHandler? _nextHandler;
-    protected readonly AppConfiguration Configuration;
-
-    protected BaseProviderHandler(IOptions<AppConfiguration> configOptions)
-    {
-        ArgumentNullException.ThrowIfNull(configOptions);
-        Configuration = configOptions.Value;
-    }
 
     public abstract string ProviderName { get; }
+
+    public IProviderHandler? NextHandler => _nextHandler;
 
     public IProviderHandler SetNext(IProviderHandler handler)
     {
@@ -26,48 +19,30 @@ public abstract class BaseProviderHandler : IProviderHandler
         return handler;
     }
 
-    public bool TryCreateChatClient(string modelName, out IChatClient? client)
+    public IChatClient? Handle(
+        string modelName, 
+        Action<IProviderHandler, string>? onSuccess = null, 
+        Action<IProviderHandler, string, Exception>? onFailure = null)
     {
-        // First, try to handle the request in this provider
-        if (CanHandleModel(modelName))
+        if (!CanHandleModel(modelName))
         {
-            try
-            {
-                client = CreateChatClient(modelName);
-                if (Configuration.AgentFactory.EnableLogging)
-                {
-                    Console.WriteLine($"  ✓ Provider '{ProviderName}' handling model: {modelName}");
-                }
-                return true;
-            }
-            catch (Exception ex)
-            {
-                if (Configuration.AgentFactory.EnableLogging)
-                {
-                    Console.WriteLine($"  ✗ Provider '{ProviderName}' failed to create client: {ex.Message}");
-                }
-                client = null;
-            }
+            return NextHandler?.Handle(modelName, onSuccess, onFailure);
         }
 
-        // If this provider can't handle it, pass to the next handler in the chain
-        if (_nextHandler != null)
+        try
         {
-            return _nextHandler.TryCreateChatClient(modelName, out client);
+            var client = CreateChatClient(modelName);
+            onSuccess?.Invoke(this, modelName);
+            return client;
         }
-
-        // No handler in the chain could handle the request
-        client = null;
-        return false;
+        catch (Exception ex)
+        {
+            onFailure?.Invoke(this, modelName, ex);
+            return NextHandler?.Handle(modelName, onSuccess, onFailure);
+        }
     }
 
-    /// <summary>
-    /// Determine if this provider can handle the specified model
-    /// </summary>
-    protected abstract bool CanHandleModel(string modelName);
+    public abstract bool CanHandleModel(string modelName);
 
-    /// <summary>
-    /// Create the chat client for the specified model
-    /// </summary>
-    protected abstract IChatClient CreateChatClient(string modelName);
+    public abstract IChatClient CreateChatClient(string modelName);
 }

@@ -2,6 +2,7 @@ using AgentFramework.Factory.TestConsole.Services.Configuration;
 using AgentFramework.Factory.TestConsole.Services.Models;
 using AgentFramework.Factory.TestConsole.Services.Providers;
 using Microsoft.Extensions.AI;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 namespace AgentFramework.Factory.TestConsole.Services.Factories;
@@ -13,11 +14,18 @@ public class ProviderFactory
 {
     private readonly AppConfiguration configuration;
     private readonly IProviderHandler providerChainHead;
+    private readonly ILogger<ProviderFactory> logger;
 
-    public ProviderFactory(IOptions<AppConfiguration> configOptions, IEnumerable<IProviderHandler> providerHandlers)
+    public ProviderFactory(
+        IOptions<AppConfiguration> configOptions, 
+        IEnumerable<IProviderHandler> providerHandlers,
+        ILogger<ProviderFactory> logger)
     {
         ArgumentNullException.ThrowIfNull(configOptions);
+        ArgumentNullException.ThrowIfNull(logger);
+        
         this.configuration = configOptions.Value;
+        this.logger = logger;
         
         if (providerHandlers == null || !providerHandlers.Any())
         {
@@ -82,7 +90,7 @@ public class ProviderFactory
             }
             else if (configuration.AgentFactory.EnableLogging)
             {
-                Console.WriteLine($"  ⚠ Unknown provider in chain: {providerName}");
+                logger.LogWarning("Unknown provider in chain: {ProviderName}", providerName);
             }
         }
 
@@ -109,10 +117,20 @@ public class ProviderFactory
 
         if (configuration.AgentFactory.EnableLogging)
         {
-            Console.WriteLine($"🔍 Looking for provider to handle model: {modelName}");
+            logger.LogInformation("Looking for provider to handle model: {ModelName}", modelName);
         }
 
-        if (providerChainHead.TryCreateChatClient(modelName, out var client) && client != null)
+        var client = providerChainHead.Handle(
+            modelName,
+            onSuccess: configuration.AgentFactory.EnableLogging
+                ? (handler, model) => logger.LogInformation("Provider '{ProviderName}' handling model: {ModelName}", handler.ProviderName, model)
+                : null,
+            onFailure: configuration.AgentFactory.EnableLogging
+                ? (handler, model, ex) => logger.LogWarning(ex, "Provider '{ProviderName}' failed to create client for model: {ModelName}", handler.ProviderName, model)
+                : null
+        );
+        
+        if (client != null)
         {
             return client;
         }
@@ -140,9 +158,17 @@ public class ProviderFactory
         // We'll use a common model name that most providers should recognize
         var testModel = "gpt-4o-mini";
         
-        if (providerChainHead.TryCreateChatClient(testModel, out _))
+        try
         {
-            return (true, string.Empty);
+            var client = providerChainHead.Handle(testModel);
+            if (client != null)
+            {
+                return (true, string.Empty);
+            }
+        }
+        catch
+        {
+            // Provider chain failed
         }
 
         return (false, "No provider in the chain is properly configured. Check your provider settings.");

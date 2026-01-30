@@ -1,5 +1,6 @@
 using AgentFramework.Factory.TestConsole.Services.Configuration;
 using AgentFramework.Factory.TestConsole.Services.Factories;
+using Microsoft.Extensions.Options;
 using Spectre.Console;
 using Spectre.Console.Cli;
 
@@ -10,10 +11,11 @@ public class TestAgentCommand : Command<TestAgentCommand.Settings>
     private readonly AgentFactory _agentFactory;
     private readonly AppConfiguration _config;
 
-    public TestAgentCommand(AgentFactory agentFactory, AppConfiguration config)
+    public TestAgentCommand(AgentFactory agentFactory, IOptions<AppConfiguration> config)
     {
         _agentFactory = agentFactory ?? throw new ArgumentNullException(nameof(agentFactory));
-        _config = config ?? throw new ArgumentNullException(nameof(config));
+        ArgumentNullException.ThrowIfNull(config);
+        _config = config.Value;
     }
 
     public class Settings : CommandSettings

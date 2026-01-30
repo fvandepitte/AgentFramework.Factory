@@ -3,6 +3,7 @@ using AgentFramework.Factory.TestConsole.Services.Factories;
 using AgentFramework.Factory.TestConsole.Services.Providers;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 namespace AgentFramework.Factory.TestConsole.Infrastructure;
@@ -25,6 +26,13 @@ public static class ServiceCollectionExtensions
         // Register IConfiguration
         services.AddSingleton<IConfiguration>(configuration);
         
+        // Register logging
+        services.AddLogging(configure =>
+        {
+            configure.AddConsole();
+            configure.SetMinimumLevel(LogLevel.Information);
+        });
+
         // Register configuration models using Options pattern
         services.Configure<AppConfiguration>(configuration);
         services.Configure<AgentFactoryConfiguration>(configuration.GetSection("agentFactory"));
