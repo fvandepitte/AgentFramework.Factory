@@ -57,10 +57,10 @@ public class ReadTestCommand : Command<ReadTestCommand.Settings>
             metadataTable.AddColumn("[blue]Value[/]");
 
             metadataTable.AddRow("[cyan]Name[/]", $"[green]{agent.Name}[/]");
-            metadataTable.AddRow("[cyan]Description[/]", agent.Description);
+            metadataTable.AddRow("[cyan]Description[/]", agent.Description ?? "[dim]<none>[/]");
             metadataTable.AddRow("[cyan]Model[/]", $"[yellow]{agent.Model}[/]");
             metadataTable.AddRow("[cyan]Temperature[/]", agent.Temperature.ToString("0.0"));
-            metadataTable.AddRow("[cyan]Provider[/]", agent.Provider);
+            metadataTable.AddRow("[cyan]Provider[/]", agent.Provider ?? "[dim]<default>[/]");
             
             if (agent.MaxTokens.HasValue)
                 metadataTable.AddRow("[cyan]Max Tokens[/]", agent.MaxTokens.Value.ToString());

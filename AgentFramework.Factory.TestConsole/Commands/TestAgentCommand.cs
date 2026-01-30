@@ -129,7 +129,9 @@ public class TestAgentCommand : Command<TestAgentCommand.Settings>
                         var response = await agent.RunAsync(userMessage, session);
 
                         AnsiConsole.WriteLine();
-                        var panel = new Panel(response.ToString())
+                        // Escape markup to prevent Spectre from interpreting brackets in the response
+                        var escapedResponse = Markup.Escape(response.ToString() ?? string.Empty);
+                        var panel = new Panel(escapedResponse)
                         {
                             Header = new PanelHeader($"[bold green]{agentName}:[/]"),
                             Border = BoxBorder.Rounded,

@@ -173,6 +173,7 @@ public static class ServiceCollectionExtensions
 
         // Register tool classes (for dependency injection into LocalToolProvider)
         services.AddSingleton<WeatherTools>();
+        // GitHubMockTools removed - GitHub tools will come from MCP server
     }
 
     /// <summary>

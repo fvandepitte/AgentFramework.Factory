@@ -169,5 +169,6 @@ public class McpServerConfiguration
     public string? Command { get; set; }
     public List<string>? Args { get; set; }
     public string? Url { get; set; }
+    public Dictionary<string, string>? Headers { get; set; }
     public Dictionary<string, string>? Environment { get; set; }
 }

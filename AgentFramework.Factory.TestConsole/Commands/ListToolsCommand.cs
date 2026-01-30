@@ -86,10 +86,18 @@ public class ListToolsCommand : Command<ListToolsCommand.Settings>
                     .LeftJustified());
                 AnsiConsole.WriteLine();
 
+                // Check if this is the MCP provider to add Server column
+                var mcpProvider = provider as McpToolProvider;
+                
                 var toolTable = new Table()
                     .Border(TableBorder.Rounded)
                     .AddColumn("Tool Name")
                     .AddColumn("Type");
+                
+                if (mcpProvider != null)
+                {
+                    toolTable.AddColumn("Server");
+                }
 
                 foreach (var tool in tools)
                 {
@@ -98,10 +106,22 @@ public class ListToolsCommand : Command<ListToolsCommand.Settings>
                     var name = aiFunction?.Name ?? "Unknown";
                     var type = tool.GetType().Name;
 
-                    toolTable.AddRow(
-                        $"[cyan]{name}[/]",
-                        type
-                    );
+                    if (mcpProvider != null)
+                    {
+                        var serverName = mcpProvider.GetServerNameForTool(name) ?? "[dim]unknown[/]";
+                        toolTable.AddRow(
+                            $"[cyan]{name}[/]",
+                            type,
+                            $"[yellow]{serverName}[/]"
+                        );
+                    }
+                    else
+                    {
+                        toolTable.AddRow(
+                            $"[cyan]{name}[/]",
+                            type
+                        );
+                    }
                 }
 
                 AnsiConsole.Write(toolTable);
