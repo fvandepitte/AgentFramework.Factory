@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="AgentFramework.Factory.TestConsole/AgentFramework.Factory.TestConsole.csproj" />
+  <Project Path="AgentFramework.Factory/AgentFramework.Factory.csproj" />
+</Solution>
