@@ -7,6 +7,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Serilog;
 
 namespace AgentFramework.Factory.TestConsole.Infrastructure;
 
@@ -28,11 +29,26 @@ public static class ServiceCollectionExtensions
         // Register IConfiguration
         services.AddSingleton<IConfiguration>(configuration);
         
-        // Register logging
+        // Configure Serilog with file logging (one file per run)
+        var timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
+        var logFileName = Path.Combine("logs", $"agent-run-{timestamp}.log");
+        
+        // Ensure logs directory exists
+        Directory.CreateDirectory("logs");
+        
+        Log.Logger = new LoggerConfiguration()
+            .MinimumLevel.Information()
+            .WriteTo.File(logFileName,
+                outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {SourceContext}: {Message:lj}{NewLine}{Exception}",
+                buffered: false,
+                flushToDiskInterval: TimeSpan.FromSeconds(1))
+            .CreateLogger();
+        
+        // Register logging with Serilog
         services.AddLogging(configure =>
         {
-            configure.AddConsole();
-            configure.SetMinimumLevel(LogLevel.Information);
+            configure.ClearProviders();
+            configure.AddSerilog(dispose: true);
         });
 
         // Register configuration models using Options pattern
