@@ -1,5 +1,6 @@
 using AgentFramework.Factory.TestConsole.Services.Configuration;
 using AgentFramework.Factory.TestConsole.Services.Models;
+using AgentFramework.Factory.TestConsole.Services.Tools;
 using Microsoft.Agents.AI;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Options;
@@ -15,16 +16,19 @@ public class AgentFactory
     private readonly AppConfiguration configuration;
     private readonly MarkdownAgentFactory markdownFactory;
     private readonly ProviderFactory providerFactory;
+    private readonly ToolFactory toolFactory;
 
     public AgentFactory(
         IOptions<AppConfiguration> configOptions,
         MarkdownAgentFactory markdownFactory,
-        ProviderFactory providerFactory)
+        ProviderFactory providerFactory,
+        ToolFactory toolFactory)
     {
         ArgumentNullException.ThrowIfNull(configOptions);
         this.configuration = configOptions.Value;
         this.markdownFactory = markdownFactory ?? throw new ArgumentNullException(nameof(markdownFactory));
         this.providerFactory = providerFactory ?? throw new ArgumentNullException(nameof(providerFactory));
+        this.toolFactory = toolFactory ?? throw new ArgumentNullException(nameof(toolFactory));
     }
 
     /// <summary>
@@ -61,6 +65,24 @@ public class AgentFactory
         if (loadedAgent.PresencePenalty.HasValue)
         {
             chatOptions.PresencePenalty = (float)loadedAgent.PresencePenalty.Value;
+        }
+
+        // Get tools for this agent
+        var tools = new List<AITool>();
+        if (loadedAgent.Tools.Any())
+        {
+            tools.AddRange(toolFactory.GetToolsForAgent(loadedAgent.Tools));
+            
+            if (configuration.AgentFactory.EnableLogging)
+            {
+                Console.WriteLine($"  ℹ Agent '{loadedAgent.Name}' configured with {tools.Count} tool(s)");
+            }
+        }
+
+        // Add tools to chat options if any are available
+        if (tools.Any())
+        {
+            chatOptions.Tools = tools;
         }
 
         // Create the agent using AsAIAgent extension method which properly sets name and options
@@ -137,6 +159,11 @@ public class AgentFactory
     /// Get the ProviderFactory for direct access
     /// </summary>
     public ProviderFactory GetProviderFactory() => providerFactory;
+
+    /// <summary>
+    /// Get the ToolFactory for direct access
+    /// </summary>
+    public ToolFactory GetToolFactory() => toolFactory;
 
     /// <summary>
     /// Validate that an agent can be created (checks configuration and provider)

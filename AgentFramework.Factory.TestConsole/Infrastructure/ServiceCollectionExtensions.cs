@@ -1,6 +1,7 @@
 using AgentFramework.Factory.TestConsole.Services.Configuration;
 using AgentFramework.Factory.TestConsole.Services.Factories;
 using AgentFramework.Factory.TestConsole.Services.Providers;
+using AgentFramework.Factory.TestConsole.Services.Tools;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -40,15 +41,21 @@ public static class ServiceCollectionExtensions
         services.Configure<AzureOpenAIConfiguration>(configuration.GetSection("providers:azureOpenAI"));
         services.Configure<OpenAIConfiguration>(configuration.GetSection("providers:openAI"));
         services.Configure<GitHubModelsConfiguration>(configuration.GetSection("providers:githubModels"));
+        services.Configure<ToolsConfiguration>(configuration.GetSection("tools"));
 
         // Register provider handlers
         services.AddSingleton<IProviderHandler, AzureOpenAIProviderHandler>();
         services.AddSingleton<IProviderHandler, OpenAIProviderHandler>();
         services.AddSingleton<IProviderHandler, GitHubModelsProviderHandler>();
 
+        // Register tool providers
+        services.AddSingleton<IToolProvider, LocalToolProvider>();
+        services.AddSingleton<IToolProvider, McpToolProvider>();
+
         // Register services
         services.AddSingleton<MarkdownAgentFactory>();
         services.AddSingleton<ProviderFactory>();
+        services.AddSingleton<ToolFactory>();
         services.AddSingleton<AgentFactory>();
 
         return services;

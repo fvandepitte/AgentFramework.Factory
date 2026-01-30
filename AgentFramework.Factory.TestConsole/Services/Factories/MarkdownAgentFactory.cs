@@ -107,7 +107,8 @@ public class MarkdownAgentFactory
             PresencePenalty = config.Overrides?.PresencePenalty ?? metadata.PresencePenalty,
             Instructions = instructions,
             SourceFile = config.MarkdownPath,
-            Provider = config.Provider ?? configuration.AgentFactory.DefaultProvider
+            Provider = config.Provider ?? configuration.AgentFactory.DefaultProvider,
+            Tools = metadata.Tools ?? new List<string>()
         };
 
         return agent;
