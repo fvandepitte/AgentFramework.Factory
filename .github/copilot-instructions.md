@@ -71,6 +71,25 @@ dotnet user-secrets init
 
 ## Project-Specific Patterns
 
+### C# Naming Conventions
+
+**Field naming:** Do NOT use underscore prefixes for private fields. Use camelCase and `this.` qualifier when needed:
+```csharp
+// ✅ Correct
+private readonly ILogger<MyClass> logger;
+public MyClass(ILogger<MyClass> logger)
+{
+    this.logger = logger;
+}
+
+// ❌ Wrong
+private readonly ILogger<MyClass> _logger;
+public MyClass(ILogger<MyClass> logger)
+{
+    _logger = logger;
+}
+```
+
 ### Service Classes Organization
 
 All core services live in [Services/](../AgentFramework.Factory.TestConsole/Services/):

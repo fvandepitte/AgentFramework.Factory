@@ -2,6 +2,7 @@ using AgentFramework.Factory.TestConsole.Services.Configuration;
 using AgentFramework.Factory.TestConsole.Services.Factories;
 using AgentFramework.Factory.TestConsole.Services.Providers;
 using AgentFramework.Factory.TestConsole.Services.Tools;
+using AgentFramework.Factory.TestConsole.Tools.Samples;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -51,6 +52,9 @@ public static class ServiceCollectionExtensions
         // Register tool providers
         services.AddSingleton<IToolProvider, LocalToolProvider>();
         services.AddSingleton<IToolProvider, McpToolProvider>();
+
+        // Register tool classes (for dependency injection into LocalToolProvider)
+        services.AddSingleton<WeatherTools>();
 
         // Register services
         services.AddSingleton<MarkdownAgentFactory>();
