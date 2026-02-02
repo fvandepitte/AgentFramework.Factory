@@ -1,4 +1,7 @@
 <Solution>
   <Project Path="AgentFramework.Factory.TestConsole/AgentFramework.Factory.TestConsole.csproj" />
   <Project Path="AgentFramework.Factory/AgentFramework.Factory.csproj" />
+  <Project Path="AgentFramework.Factory.Provider.AzureOpenAI/AgentFramework.Factory.Provider.AzureOpenAI.csproj" />
+  <Project Path="AgentFramework.Factory.Provider.OpenAI/AgentFramework.Factory.Provider.OpenAI.csproj" />
+  <Project Path="AgentFramework.Factory.Provider.GitHubModels/AgentFramework.Factory.Provider.GitHubModels.csproj" />
 </Solution>
