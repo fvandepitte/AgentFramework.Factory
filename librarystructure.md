@@ -1,3 +1,18 @@
+# Library Structure
+
+> **Status: ✅ Core library (Phase 1 & 2) completed!**  
+> The AgentFramework.Factory core library is now fully functional and reusable.  
+> See [CHANGELOG.md](AgentFramework.Factory/CHANGELOG.md) for details.
+
+## Implementation Status
+
+- ✅ **Phase 1: Core Library Structure** - Complete
+- ✅ **Phase 2: Core Components** - Complete  
+- 🔄 **Phase 3: Provider Packages** - Planned (future work)
+- 🔄 **Phase 4: Production Features** - Planned (future work)
+
+---
+
 # Namespace Structure
 
 - AgentFramework.Factory
@@ -14,37 +29,37 @@ Module contains `AgentFactory`, `MarkdownAgentFactory`, `ToolFactory` and a `Ser
 
 Make sure everything is in its own namespace.
 
-### Folder Structure
+### Folder Structure (✅ = Implemented, 📋 = Planned)
 
 ```
 AgentFramework.Factory/
-├── Abstractions/
-│   ├── ILoadedAgent.cs
-│   ├── IMarkdownAgentFactory.cs
-│   ├── IProviderHandler.cs
-│   ├── IToolProvider.cs
-│   ├── IAgentRunner.cs          # Execute conversations with loaded agents
-│   ├── IAgentBuilder.cs         # Fluent API for programmatic agent creation
-│   └── IAgentRepository.cs      # Load/save agents from various sources
-├── Services/
-│   ├── MarkdownAgentFactory.cs
-│   ├── ProviderFactory.cs
-│   ├── ToolFactory.cs
-│   └── BaseProviderHandler.cs
-├── Configuration/
-│   ├── AgentFactoryConfiguration.cs
-│   ├── AgentConfigurationEntry.cs
-│   └── ToolsConfiguration.cs
-├── Models/
-│   ├── LoadedAgent.cs
-│   ├── AgentMetadata.cs
-│   └── AgentValidationResult.cs  # Structured validation for markdown parsing
-├── Exceptions/
-│   ├── AgentLoadException.cs
-│   ├── ProviderNotFoundException.cs
-│   └── ToolResolutionException.cs
-└── Extensions/
-    └── ServiceCollectionExtensions.cs
+├── Abstractions/                    ✅ Complete
+│   ├── ILoadedAgent.cs              ✅
+│   ├── IMarkdownAgentFactory.cs     ✅
+│   ├── IProviderHandler.cs          ✅
+│   ├── IToolProvider.cs             ✅
+│   ├── IAgentRunner.cs              ✅ NEW - Execute conversations with loaded agents
+│   ├── IAgentBuilder.cs             ✅ NEW - Fluent API for programmatic agent creation
+│   └── IAgentRepository.cs          ✅ NEW - Load/save agents from various sources
+├── Services/                        ✅ Core implementations complete
+│   ├── MarkdownAgentFactory.cs      ✅
+│   ├── ProviderFactory.cs           📋 Future - in TestConsole
+│   ├── ToolFactory.cs               📋 Future - in TestConsole
+│   └── BaseProviderHandler.cs       ✅
+├── Configuration/                   ✅ Complete
+│   ├── AgentFactoryConfiguration.cs ✅
+│   ├── AgentConfigurationEntry.cs   ✅
+│   └── ToolsConfiguration.cs        ✅
+├── Models/                          ✅ Complete
+│   ├── LoadedAgent.cs               ✅
+│   ├── AgentMetadata.cs             ✅ NEW
+│   └── AgentValidationResult.cs     ✅ NEW - Structured validation for markdown parsing
+├── Exceptions/                      ✅ NEW - Complete exception hierarchy
+│   ├── AgentLoadException.cs        ✅
+│   ├── ProviderNotFoundException.cs ✅
+│   └── ToolResolutionException.cs   ✅
+└── Extensions/                      ✅ Complete with fluent builder
+    └── ServiceCollectionExtensions.cs ✅
 ```
 
 ### ServiceCollectionExtensions
