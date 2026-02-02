@@ -1,5 +1,57 @@
 # Agent Framework Markdown Factory
 
+> **⚡ Now Available as a Reusable Library!**  
+> The core `AgentFramework.Factory` package provides a standalone, reusable library for creating AI agents from markdown definitions. Use it in any .NET application without the TestConsole.
+
+## 📦 Quick Start
+
+### Using the Core Library
+
+```bash
+dotnet add package AgentFramework.Factory
+```
+
+```csharp
+using AgentFramework.Factory.Extensions;
+
+services.AddAgentFramework(configuration)
+    .AddMarkdownAgents(options => options.AgentDefinitionsPath = "./agents");
+
+var factory = serviceProvider.GetRequiredService<IMarkdownAgentFactory>();
+var agent = factory.LoadAgentFromFile("./agents/my-agent.md");
+```
+
+👉 See [AgentFramework.Factory/USAGE.md](AgentFramework.Factory/USAGE.md) for complete usage examples.
+
+## Project Structure
+
+This repository contains:
+
+- **[AgentFramework.Factory/](AgentFramework.Factory/)** - Core reusable library (⭐ **Use this in your projects**)
+- **[AgentFramework.Factory.TestConsole/](AgentFramework.Factory.TestConsole/)** - Reference CLI implementation
+- **[librarystructure.md](librarystructure.md)** - Architecture and design documentation
+
+## ✨ Key Features
+
+- 📝 **Markdown-based agent definitions** - Define agents using markdown with YAML frontmatter
+- 🔌 **Provider abstraction** - Support for Azure OpenAI, OpenAI, GitHub Models, and custom providers
+- 🛠️ **Extensible tool system** - Add custom tools via `IToolProvider` interface
+- ⚙️ **Flexible configuration** - Layered configuration with per-agent overrides
+- 🔗 **Chain of Responsibility** - Automatic provider fallback and model routing
+- 🏗️ **Fluent builder API** - Clean, intuitive service registration
+- 📦 **NuGet ready** - Packaged for easy distribution and consumption
+- 🧪 **Well-documented** - Comprehensive docs, examples, and XML comments
+
+## 💡 Why This Exists
+
+The Microsoft Agent Framework has different levels of declarative support:
+
+- ✅ **Python** - Full declarative agent support via YAML
+- ✅ **.NET** - Declarative *workflows*, but agents must be code-first
+- ✅ **GitHub Copilot** - Uses markdown files for agent definitions
+
+**AgentFramework.Factory** bridges this gap, bringing markdown-based declarative agent definitions to .NET, inspired by GitHub Copilot's approach.
+
 ## Project Goal
 
 Create an extension for the **Microsoft Agent Framework** that enables agent generation using **Markdown files**, similar to how GitHub Copilot agents are defined. This approach provides a declarative, human-readable configuration format that separates agent definitions from implementation code.
