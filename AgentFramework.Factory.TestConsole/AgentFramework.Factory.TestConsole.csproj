@@ -9,13 +9,10 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Azure.AI.OpenAI" Version="2.8.0-beta.1" />
-    <PackageReference Include="Azure.Identity" Version="1.17.1" />
     <PackageReference Include="Markdig" Version="0.44.0" />
     <PackageReference Include="Microsoft.Agents.AI" Version="1.0.0-preview.260128.1" />
     <PackageReference Include="Microsoft.Extensions.AI" Version="10.2.0" />
     <PackageReference Include="Microsoft.Extensions.AI.Abstractions" Version="10.2.0" />
-    <PackageReference Include="Microsoft.Extensions.AI.OpenAI" Version="10.2.0-preview.1.26063.2" />
     <PackageReference Include="Microsoft.Extensions.Configuration.Binder" Version="10.0.2" />
     <PackageReference Include="Microsoft.Extensions.Configuration.EnvironmentVariables" Version="10.0.2" />
     <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="10.0.2" />
@@ -35,6 +32,9 @@
 
   <ItemGroup>
     <ProjectReference Include="..\AgentFramework.Factory\AgentFramework.Factory.csproj" />
+    <ProjectReference Include="..\AgentFramework.Factory.Provider.AzureOpenAI\AgentFramework.Factory.Provider.AzureOpenAI.csproj" />
+    <ProjectReference Include="..\AgentFramework.Factory.Provider.OpenAI\AgentFramework.Factory.Provider.OpenAI.csproj" />
+    <ProjectReference Include="..\AgentFramework.Factory.Provider.GitHubModels\AgentFramework.Factory.Provider.GitHubModels.csproj" />
   </ItemGroup>
 
   <ItemGroup>

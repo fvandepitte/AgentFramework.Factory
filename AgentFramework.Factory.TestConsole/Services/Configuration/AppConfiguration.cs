@@ -1,3 +1,6 @@
+using AgentFramework.Factory.Provider.AzureOpenAI.Configuration;
+using AgentFramework.Factory.Provider.OpenAI.Configuration;
+using AgentFramework.Factory.Provider.GitHubModels.Configuration;
 using YamlDotNet.Serialization;
 
 namespace AgentFramework.Factory.TestConsole.Services.Configuration;
@@ -52,26 +55,6 @@ public class ProvidersConfiguration
     public AzureOpenAIConfiguration AzureOpenAI { get; set; } = new();
     public OpenAIConfiguration OpenAI { get; set; } = new();
     public GitHubModelsConfiguration GitHubModels { get; set; } = new();
-}
-
-public class AzureOpenAIConfiguration
-{
-    public string Endpoint { get; set; } = string.Empty;
-    public string ApiKey { get; set; } = string.Empty;
-    public string DeploymentName { get; set; } = "gpt-4o-mini";
-    public string ApiVersion { get; set; } = "2024-08-01-preview";
-}
-
-public class OpenAIConfiguration
-{
-    public string ApiKey { get; set; } = string.Empty;
-    public string Model { get; set; } = "gpt-4o-mini";
-}
-
-public class GitHubModelsConfiguration
-{
-    public string Token { get; set; } = string.Empty;
-    public string Model { get; set; } = "gpt-4o-mini";
 }
 
 /// <summary>

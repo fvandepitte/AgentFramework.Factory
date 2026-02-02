@@ -1,6 +1,6 @@
+using AgentFramework.Factory.Abstractions;
 using AgentFramework.Factory.TestConsole.Services.Configuration;
 using AgentFramework.Factory.TestConsole.Services.Models;
-using AgentFramework.Factory.TestConsole.Services.Providers;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
