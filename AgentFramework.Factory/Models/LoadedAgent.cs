@@ -18,4 +18,5 @@ public class LoadedAgent : ILoadedAgent
     public double? FrequencyPenalty { get; init; }
     public double? PresencePenalty { get; init; }
     public string? Provider { get; init; }
+    public string? SourceFile { get; init; }
 }

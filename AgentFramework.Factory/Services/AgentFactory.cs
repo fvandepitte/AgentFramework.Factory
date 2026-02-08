@@ -1,40 +1,44 @@
-using AgentFramework.Factory.TestConsole.Services.Configuration;
-using AgentFramework.Factory.TestConsole.Services.Models;
-using AgentFramework.Factory.TestConsole.Services.Tools;
+using AgentFramework.Factory.Abstractions;
+using AgentFramework.Factory.Configuration;
 using Microsoft.Agents.AI;
 using Microsoft.Extensions.AI;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using OpenAI.Chat;
 
-namespace AgentFramework.Factory.TestConsole.Services.Factories;
+namespace AgentFramework.Factory.Services;
 
 /// <summary>
 /// Factory for creating fully configured AIAgent instances from markdown definitions
 /// </summary>
 public class AgentFactory
 {
-    private readonly AppConfiguration configuration;
-    private readonly MarkdownAgentFactory markdownFactory;
+    private readonly AgentFactoryConfiguration configuration;
+    private readonly IMarkdownAgentFactory markdownFactory;
     private readonly ProviderFactory providerFactory;
     private readonly ToolFactory toolFactory;
+    private readonly ILogger<AgentFactory> logger;
 
     public AgentFactory(
-        IOptions<AppConfiguration> configOptions,
-        MarkdownAgentFactory markdownFactory,
+        IOptions<AgentFactoryConfiguration> configOptions,
+        IMarkdownAgentFactory markdownFactory,
         ProviderFactory providerFactory,
-        ToolFactory toolFactory)
+        ToolFactory toolFactory,
+        ILogger<AgentFactory> logger)
     {
         ArgumentNullException.ThrowIfNull(configOptions);
+        ArgumentNullException.ThrowIfNull(logger);
+        
         this.configuration = configOptions.Value;
         this.markdownFactory = markdownFactory ?? throw new ArgumentNullException(nameof(markdownFactory));
         this.providerFactory = providerFactory ?? throw new ArgumentNullException(nameof(providerFactory));
         this.toolFactory = toolFactory ?? throw new ArgumentNullException(nameof(toolFactory));
+        this.logger = logger;
     }
 
     /// <summary>
     /// Create a fully configured AIAgent from a LoadedAgent
     /// </summary>
-    public AIAgent CreateAgent(LoadedAgent loadedAgent)
+    public AIAgent CreateAgent(ILoadedAgent loadedAgent)
     {
         // Create the chat client for this agent's provider
         var chatClient = providerFactory.CreateChatClientForAgent(loadedAgent);
@@ -50,9 +54,9 @@ public class AgentFactory
         {
             tools.AddRange(toolFactory.GetToolsForAgent(loadedAgent.Tools));
             
-            if (configuration.AgentFactory.EnableLogging)
+            if (configuration.EnableLogging)
             {
-                Console.WriteLine($"  ℹ Agent '{loadedAgent.Name}' configured with {tools.Count} tool(s)");
+                logger.LogInformation("Agent '{Name}' configured with {Count} tool(s)", loadedAgent.Name, tools.Count);
             }
         }
 
@@ -78,56 +82,9 @@ public class AgentFactory
     }
 
     /// <summary>
-    /// Load and create an agent by name from configuration
-    /// </summary>
-    public AIAgent CreateAgentByName(string name)
-    {
-        var agentConfig = configuration.Agents.FirstOrDefault(a => 
-            a.Name.Equals(name, StringComparison.OrdinalIgnoreCase) && a.Enabled);
-
-        if (agentConfig == null)
-        {
-            throw new InvalidOperationException(
-                $"Agent '{name}' not found in configuration or is disabled");
-        }
-
-        var loadedAgent = markdownFactory.LoadAgentFromMarkdown(agentConfig);
-        return CreateAgent(loadedAgent);
-    }
-
-    /// <summary>
-    /// Load and create all enabled agents from configuration
-    /// </summary>
-    public Dictionary<string, AIAgent> CreateAllAgents()
-    {
-        var agents = new Dictionary<string, AIAgent>();
-        var loadedAgents = markdownFactory.LoadAgentsFromConfiguration();
-
-        foreach (var loadedAgent in loadedAgents)
-        {
-            try
-            {
-                var agent = CreateAgent(loadedAgent);
-                agents[loadedAgent.Name] = agent;
-
-                if (configuration.AgentFactory.EnableLogging)
-                {
-                    Console.WriteLine($"  ✓ Created agent: {loadedAgent.Name}");
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"  ✗ Failed to create agent {loadedAgent.Name}: {ex.Message}");
-            }
-        }
-
-        return agents;
-    }
-
-    /// <summary>
     /// Get the MarkdownAgentFactory for direct access
     /// </summary>
-    public MarkdownAgentFactory GetMarkdownFactory() => markdownFactory;
+    public IMarkdownAgentFactory GetMarkdownFactory() => markdownFactory;
 
     /// <summary>
     /// Get the ProviderFactory for direct access
@@ -140,28 +97,23 @@ public class AgentFactory
     public ToolFactory GetToolFactory() => toolFactory;
 
     /// <summary>
-    /// Validate that an agent can be created (checks configuration and provider)
+    /// Validate that a markdown file can be loaded as an agent
     /// </summary>
-    public (bool IsValid, string ErrorMessage) ValidateAgent(string agentName)
+    public (bool IsValid, string ErrorMessage) ValidateAgentFile(string markdownPath)
     {
         try
         {
-            var agentConfig = configuration.Agents.FirstOrDefault(a => 
-                a.Name.Equals(agentName, StringComparison.OrdinalIgnoreCase));
-
-            if (agentConfig == null)
+            if (!File.Exists(markdownPath))
             {
-                return (false, $"Agent '{agentName}' not found in configuration");
+                return (false, $"Markdown file not found: {markdownPath}");
             }
 
-            if (!agentConfig.Enabled)
+            // Try to load the agent to validate
+            var loadedAgent = markdownFactory.LoadAgentFromFile(markdownPath);
+            
+            if (string.IsNullOrWhiteSpace(loadedAgent.Name))
             {
-                return (false, $"Agent '{agentName}' is disabled");
-            }
-
-            if (!File.Exists(agentConfig.MarkdownPath))
-            {
-                return (false, $"Markdown file not found: {agentConfig.MarkdownPath}");
+                return (false, "Agent name is required");
             }
 
             // Provider validation is now handled by the chain of responsibility

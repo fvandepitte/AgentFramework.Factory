@@ -1,23 +1,22 @@
 using AgentFramework.Factory.Abstractions;
-using AgentFramework.Factory.TestConsole.Services.Configuration;
-using AgentFramework.Factory.TestConsole.Services.Models;
+using AgentFramework.Factory.Configuration;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
-namespace AgentFramework.Factory.TestConsole.Services.Factories;
+namespace AgentFramework.Factory.Services;
 
 /// <summary>
 /// Factory for creating IChatClient instances using Chain of Responsibility pattern
 /// </summary>
 public class ProviderFactory
 {
-    private readonly AppConfiguration configuration;
+    private readonly AgentFactoryConfiguration configuration;
     private readonly IProviderHandler providerChainHead;
     private readonly ILogger<ProviderFactory> logger;
 
     public ProviderFactory(
-        IOptions<AppConfiguration> configOptions, 
+        IOptions<AgentFactoryConfiguration> configOptions, 
         IEnumerable<IProviderHandler> providerHandlers,
         ILogger<ProviderFactory> logger)
     {
@@ -50,20 +49,20 @@ public class ProviderFactory
         // Get the provider chain order from configuration
         List<string> providerOrder;
         
-        if (configuration.AgentFactory.ProviderChain != null && configuration.AgentFactory.ProviderChain.Any())
+        if (configuration.ProviderChain != null && configuration.ProviderChain.Any())
         {
             // Use configured chain
-            providerOrder = configuration.AgentFactory.ProviderChain;
+            providerOrder = configuration.ProviderChain;
         }
         else
         {
             // Default: start with default provider, then try others
-            providerOrder = new List<string> { configuration.AgentFactory.DefaultProvider };
+            providerOrder = new List<string> { configuration.DefaultProvider };
             
             // Add other providers that aren't the default
             foreach (var providerName in handlersByName.Keys)
             {
-                if (!providerName.Equals(configuration.AgentFactory.DefaultProvider, StringComparison.OrdinalIgnoreCase))
+                if (!providerName.Equals(configuration.DefaultProvider, StringComparison.OrdinalIgnoreCase))
                 {
                     providerOrder.Add(providerName);
                 }
@@ -89,7 +88,7 @@ public class ProviderFactory
                     current = handler;
                 }
             }
-            else if (configuration.AgentFactory.EnableLogging)
+            else if (configuration.EnableLogging)
             {
                 logger.LogWarning("Unknown provider in chain: {ProviderName}", providerName);
             }
@@ -116,17 +115,17 @@ public class ProviderFactory
             throw new ArgumentException("Model name cannot be null or empty", nameof(modelName));
         }
 
-        if (configuration.AgentFactory.EnableLogging)
+        if (configuration.EnableLogging)
         {
             logger.LogInformation("Looking for provider to handle model: {ModelName}", modelName);
         }
 
         var client = providerChainHead.Handle(
             modelName,
-            onSuccess: configuration.AgentFactory.EnableLogging
+            onSuccess: configuration.EnableLogging
                 ? (handler, model) => logger.LogInformation("Provider '{ProviderName}' handling model: {ModelName}", handler.ProviderName, model)
                 : null,
-            onFailure: configuration.AgentFactory.EnableLogging
+            onFailure: configuration.EnableLogging
                 ? (handler, model, ex) => logger.LogWarning(ex, "Provider '{ProviderName}' failed to create client for model: {ModelName}", handler.ProviderName, model)
                 : null
         );
@@ -144,9 +143,9 @@ public class ProviderFactory
     /// <summary>
     /// Create an IChatClient instance for the specified agent
     /// </summary>
-    public IChatClient CreateChatClientForAgent(LoadedAgent agent)
+    public IChatClient CreateChatClientForAgent(ILoadedAgent agent)
     {
-        var modelName = agent.Model ?? configuration.AgentFactory.DefaultProvider;
+        var modelName = agent.Model ?? configuration.DefaultProvider;
         return CreateChatClient(modelName);
     }
 

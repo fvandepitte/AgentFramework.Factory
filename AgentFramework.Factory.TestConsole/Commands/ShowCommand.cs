@@ -1,5 +1,5 @@
 using System.ComponentModel;
-using AgentFramework.Factory.TestConsole.Services.Factories;
+using AgentFramework.Factory.TestConsole.Services;
 using Spectre.Console;
 using Spectre.Console.Cli;
 

@@ -1,8 +1,10 @@
+using AgentFramework.Factory.Abstractions;
+using AgentFramework.Factory.Extensions;
+using AgentFramework.Factory.Services;
 using AgentFramework.Factory.Provider.AzureOpenAI.Extensions;
 using AgentFramework.Factory.Provider.OpenAI.Extensions;
 using AgentFramework.Factory.Provider.GitHubModels.Extensions;
 using AgentFramework.Factory.TestConsole.Services.Configuration;
-using AgentFramework.Factory.TestConsole.Services.Factories;
 using AgentFramework.Factory.TestConsole.Services.Tools;
 using AgentFramework.Factory.TestConsole.Tools.Samples;
 using Microsoft.Extensions.Configuration;
@@ -10,6 +12,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Serilog;
+using CoreMarkdownFactory = AgentFramework.Factory.Services.MarkdownAgentFactory;
 
 namespace AgentFramework.Factory.TestConsole.Infrastructure;
 
@@ -185,9 +188,14 @@ public static class ServiceCollectionExtensions
     /// </summary>
     private static void RegisterFactories(IServiceCollection services)
     {
-        services.AddSingleton<MarkdownAgentFactory>();
+        // Register core factories
+        services.AddSingleton<IMarkdownAgentFactory, CoreMarkdownFactory>();
         services.AddSingleton<ProviderFactory>();
         services.AddSingleton<ToolFactory>();
-        services.AddSingleton<AgentFactory>();
+        services.AddSingleton<AgentFramework.Factory.Services.AgentFactory>();
+        
+        // Register TestConsole wrappers for configuration-specific methods
+        services.AddSingleton<TestConsole.Services.MarkdownAgentFactory>();
+        services.AddSingleton<TestConsole.Services.AgentFactory>();
     }
 }
