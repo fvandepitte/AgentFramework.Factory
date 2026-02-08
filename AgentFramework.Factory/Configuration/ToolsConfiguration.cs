@@ -5,7 +5,29 @@ namespace AgentFramework.Factory.Configuration;
 /// </summary>
 public class ToolsConfiguration
 {
+    /// <summary>
+    /// Enable MCP (Model Context Protocol) tool discovery
+    /// </summary>
     public bool EnableMcp { get; set; } = false;
+
+    /// <summary>
+    /// Enable local tool discovery using LocalToolAttribute
+    /// </summary>
+    public bool EnableLocalTools { get; set; } = true;
+
+    /// <summary>
+    /// Assemblies to scan for local tools (if empty, scans entry assembly)
+    /// </summary>
+    public List<string> ToolAssemblies { get; set; } = new();
+
+    /// <summary>
+    /// MCP connections configuration (key is connection name)
+    /// </summary>
+    public Dictionary<string, McpConnectionConfiguration> McpConnections { get; set; } = new();
+
+    /// <summary>
+    /// Explicitly registered tools (legacy, prefer attribute-based discovery)
+    /// </summary>
     public List<ToolDefinition> RegisteredTools { get; set; } = new();
 }
 

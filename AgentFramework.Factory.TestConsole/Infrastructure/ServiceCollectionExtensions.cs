@@ -1,11 +1,11 @@
 using AgentFramework.Factory.Abstractions;
+using AgentFramework.Factory.Configuration;
 using AgentFramework.Factory.Extensions;
 using AgentFramework.Factory.Services;
 using AgentFramework.Factory.Provider.AzureOpenAI.Extensions;
 using AgentFramework.Factory.Provider.OpenAI.Extensions;
 using AgentFramework.Factory.Provider.GitHubModels.Extensions;
 using AgentFramework.Factory.TestConsole.Services.Configuration;
-using AgentFramework.Factory.TestConsole.Services.Tools;
 using AgentFramework.Factory.TestConsole.Tools.Samples;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
