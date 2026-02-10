@@ -9,16 +9,61 @@
 
 ```bash
 dotnet add package AgentFramework.Factory
+# Also add a provider package (at least one is required)
+dotnet add package AgentFramework.Factory.Provider.AzureOpenAI
+# Or: dotnet add package AgentFramework.Factory.Provider.OpenAI
+# Or: dotnet add package AgentFramework.Factory.Provider.GitHubModels
 ```
 
 ```csharp
-using AgentFramework.Factory.Extensions;
+using AgentFramework.Factory.Configuration;
+using AgentFramework.Factory.Abstractions;
+using AgentFramework.Factory.Services;
+using AgentFramework.Factory.Provider.AzureOpenAI.Extensions;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
-services.AddAgentFramework(configuration)
-    .AddMarkdownAgents(options => options.AgentDefinitionsPath = "./agents");
+// Build configuration
+var configuration = new ConfigurationBuilder()
+    .AddJsonFile("appsettings.json")
+    .Build();
 
-var factory = serviceProvider.GetRequiredService<IMarkdownAgentFactory>();
-var agent = factory.LoadAgentFromFile("./agents/my-agent.md");
+// Create service collection
+var services = new ServiceCollection();
+
+// Add logging
+services.AddLogging(builder => builder.AddConsole());
+
+// Register configuration
+services.AddSingleton<IConfiguration>(configuration);
+
+// Configure AgentFramework.Factory options
+services.Configure<AgentFactoryConfiguration>(configuration.GetSection("agentFactory"));
+services.Configure<ToolsConfiguration>(configuration.GetSection("tools"));
+
+// Register provider(s) - at least one required
+services.AddAzureOpenAIProvider(configuration.GetSection("providers:azureOpenAI"));
+// Or use: services.AddOpenAIProvider(configuration.GetSection("providers:openAI"));
+// Or use: services.AddGitHubModelsProvider(configuration.GetSection("providers:githubModels"));
+
+// Register core factories
+services.AddSingleton<IMarkdownAgentFactory, MarkdownAgentFactory>();
+services.AddSingleton<ProviderFactory>();
+services.AddSingleton<ToolFactory>();
+services.AddSingleton<AgentFactory>();
+
+// Build service provider
+var serviceProvider = services.BuildServiceProvider();
+
+// Create an agent from markdown
+var agentFactory = serviceProvider.GetRequiredService<AgentFactory>();
+var agent = agentFactory.CreateAgentFromMarkdown("./agents/my-agent.md");
+
+// Use the agent
+var session = await agent.GetNewSessionAsync();
+var response = await agent.RunAsync("Hello, can you help me?", session);
+Console.WriteLine(response);
 ```
 
 👉 See [AgentFramework.Factory/USAGE.md](AgentFramework.Factory/USAGE.md) for complete usage examples.
@@ -376,25 +421,64 @@ This means our **Markdown-to-Agent factory** fills a real gap in the .NET ecosys
 ```json
 {
   "agentFactory": {
+    "agentDefinitionsPath": "./agents",
+    "agentFilePattern": "*.md",
     "defaultProvider": "azureOpenAI",
     "providerChain": ["azureOpenAI", "openAI", "githubModels"],
-    "enableLogging": true
+    "enableLogging": true,
+    "enableToolDiscovery": true
   },
   "providers": {
     "azureOpenAI": {
-      "endpoint": "https://my-resource.openai.azure.com",
-      "deploymentName": "gpt-4"
+      "endpoint": "https://my-resource.openai.azure.com/",
+      "deploymentName": "gpt-4o-mini",
+      "apiVersion": "2024-08-01-preview"
     },
     "openAI": {
-      "apiKey": "sk-...",
       "model": "gpt-4o-mini"
     },
     "githubModels": {
-      "token": "ghp_...",
-      "model": "llama-3.2"
+      "model": "gpt-4o-mini"
     }
-  }
+  },
+  "tools": {
+    "enableMcp": true,
+    "enableLocalTools": true,
+    "mcpConnections": {
+      "github": {
+        "type": "http",
+        "url": "https://api.githubcopilot.com/mcp/",
+        "headers": {
+          "Authorization": "Bearer YOUR_GITHUB_TOKEN_HERE"
+        }
+      }
+    }
+  },
+  "agents": [
+    {
+      "name": "MyAgent",
+      "enabled": true,
+      "markdownPath": "./agents/my-agent.md",
+      "overrides": {
+        "temperature": 0.7,
+        "maxTokens": 2000
+      }
+    }
+  ]
 }
+```
+
+**Note:** Store API keys in user secrets or environment variables, not in appsettings.json:
+
+```bash
+# Azure OpenAI
+dotnet user-secrets set "providers:azureOpenAI:apiKey" "YOUR_AZURE_OPENAI_API_KEY"
+
+# OpenAI
+dotnet user-secrets set "providers:openAI:apiKey" "YOUR_OPENAI_API_KEY"
+
+# GitHub Models
+dotnet user-secrets set "providers:githubModels:token" "YOUR_GITHUB_TOKEN"
 ```
 
 ### How It Works
