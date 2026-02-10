@@ -23,6 +23,56 @@ var agent = factory.LoadAgentFromFile("./agents/my-agent.md");
 
 👉 See [AgentFramework.Factory/USAGE.md](AgentFramework.Factory/USAGE.md) for complete usage examples.
 
+## 📦 Package Releases
+
+This repository uses automated versioning and package publishing via GitHub Actions. When a new version tag is pushed, the workflow automatically:
+
+- ✅ Builds all library projects
+- ✅ Creates NuGet packages with the tag version
+- ✅ Publishes packages to NuGet.org
+- ✅ Creates a GitHub release with attached artifacts
+
+### Releasing a New Version
+
+To release a new version, create and push a semantic version tag:
+
+```bash
+# Major version (breaking changes): v1.0.0 → v2.0.0
+git tag v2.0.0
+git push origin v2.0.0
+
+# Minor version (new features): v1.0.0 → v1.1.0
+git tag v1.1.0
+git push origin v1.1.0
+
+# Patch version (bug fixes): v1.0.0 → v1.0.1
+git tag v1.0.1
+git push origin v1.0.1
+```
+
+The workflow will automatically:
+1. Extract the version from the tag (e.g., `v1.2.3` → `1.2.3`)
+2. Build all projects with that version
+3. Create NuGet packages
+4. Upload packages as GitHub release artifacts
+5. Publish to NuGet.org (requires `NUGET_API_KEY` secret)
+
+### Manual Release
+
+You can also trigger a release manually via GitHub Actions:
+
+1. Go to **Actions** → **Library Package**
+2. Click **Run workflow**
+3. Enter the version (e.g., `1.2.3`)
+4. Click **Run workflow**
+
+### Available Packages
+
+- `AgentFramework.Factory` - Core library
+- `AgentFramework.Factory.Provider.AzureOpenAI` - Azure OpenAI provider
+- `AgentFramework.Factory.Provider.OpenAI` - OpenAI provider
+- `AgentFramework.Factory.Provider.GitHubModels` - GitHub Models provider
+
 ## Project Structure
 
 This repository contains:
