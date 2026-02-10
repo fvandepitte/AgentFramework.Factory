@@ -11,6 +11,9 @@
     <PackageTags>agents;ai;markdown;copilot;llm;azure;openai</PackageTags>
     <RepositoryUrl>https://github.com/fvandepitte/AgentFramework.Factory</RepositoryUrl>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
   </PropertyGroup>
 
   <ItemGroup>

@@ -68,6 +68,63 @@ Console.WriteLine(response);
 
 👉 See [AgentFramework.Factory/USAGE.md](AgentFramework.Factory/USAGE.md) for complete usage examples.
 
+## 📦 Package Releases
+
+This repository uses automated versioning and package publishing via GitHub Actions. When a new version tag is pushed, the workflow automatically:
+
+- ✅ Builds all library projects
+- ✅ Creates NuGet packages with the tag version
+- ✅ Publishes packages to NuGet.org
+- ✅ Creates a GitHub release with attached artifacts
+
+### Releasing a New Version (Recommended Method)
+
+The easiest way to create a release is via the automated tag creation workflow:
+
+1. Go to **Actions** → **Create Release Tag** → **Run workflow**
+2. Select version bump type: **patch**, **minor**, or **major**
+3. Optionally specify a custom version (or leave empty to auto-increment)
+4. Click **Run workflow** - the tag is created and the release is published automatically!
+
+**Version bump types:**
+- **Patch** (v1.0.0 → v1.0.1): Bug fixes
+- **Minor** (v1.0.0 → v1.1.0): New features  
+- **Major** (v1.0.0 → v2.0.0): Breaking changes
+
+### Manual Tag Creation
+
+You can also create tags manually via git:
+
+```bash
+# Major version (breaking changes): v1.0.0 → v2.0.0
+git tag v2.0.0
+git push origin v2.0.0
+
+# Minor version (new features): v1.0.0 → v1.1.0
+git tag v1.1.0
+git push origin v1.1.0
+
+# Patch version (bug fixes): v1.0.0 → v1.0.1
+git tag v1.0.1
+git push origin v1.0.1
+```
+
+The workflow will automatically:
+1. Extract the version from the tag (e.g., `v1.2.3` → `1.2.3`)
+2. Build all projects with that version
+3. Create NuGet packages
+4. Upload packages as GitHub release artifacts
+5. Publish to NuGet.org (requires `NUGET_API_KEY` secret)
+
+### Available Packages
+
+- `AgentFramework.Factory` - Core library
+- `AgentFramework.Factory.Provider.AzureOpenAI` - Azure OpenAI provider
+- `AgentFramework.Factory.Provider.OpenAI` - OpenAI provider
+- `AgentFramework.Factory.Provider.GitHubModels` - GitHub Models provider
+
+For detailed release instructions and troubleshooting, see [RELEASE_WORKFLOW.md](RELEASE_WORKFLOW.md).
+
 ## Project Structure
 
 This repository contains:

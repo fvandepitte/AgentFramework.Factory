@@ -1,0 +1,164 @@
+name: Library Package
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'  # Trigger on semantic version tags (e.g., v1.0.0, v1.2.3)
+  workflow_dispatch:  # Allow manual triggering
+    inputs:
+      version:
+        description: 'Version to release (e.g., 1.0.0)'
+        required: true
+        type: string
+
+env:
+  DOTNET_VERSION: '10.0.x'
+  CONFIGURATION: Release
+
+jobs:
+  build-and-pack:
+    name: Build and Package Libraries
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Fetch all history for proper versioning
+      
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+      
+      - name: Extract version from tag
+        id: version
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            VERSION="${{ github.event.inputs.version }}"
+          else
+            # Extract version from tag (remove 'v' prefix)
+            VERSION=${GITHUB_REF#refs/tags/v}
+          fi
+          
+          # Validate semantic version format (major.minor.patch)
+          if [[ ! $VERSION =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Error: Invalid version format '$VERSION'. Expected semantic version (e.g., 1.0.0)"
+            exit 1
+          fi
+          
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Version extracted: $VERSION"
+          
+          # Extract version components for potential use
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$VERSION"
+          echo "major=$MAJOR" >> $GITHUB_OUTPUT
+          echo "minor=$MINOR" >> $GITHUB_OUTPUT
+          echo "patch=$PATCH" >> $GITHUB_OUTPUT
+          
+          echo "Version components - Major: $MAJOR, Minor: $MINOR, Patch: $PATCH"
+      
+      - name: Restore dependencies
+        run: dotnet restore
+      
+      - name: Build solution
+        run: |
+          dotnet build --configuration ${{ env.CONFIGURATION }} --no-restore \
+            /p:Version=${{ steps.version.outputs.version }} \
+            /p:AssemblyVersion=${{ steps.version.outputs.version }} \
+            /p:FileVersion=${{ steps.version.outputs.version }}
+      
+      - name: Run tests (if any)
+        run: |
+          # Check if test projects exist
+          if find . -name "*.Tests.csproj" -o -name "*Test*.csproj" | grep -q .; then
+            dotnet test --configuration ${{ env.CONFIGURATION }} --no-build --verbosity normal
+          else
+            echo "No test projects found, skipping tests"
+          fi
+        continue-on-error: false
+      
+      - name: Pack libraries
+        run: |
+          # Pack all library projects (excluding TestConsole)
+          dotnet pack AgentFramework.Factory/AgentFramework.Factory.csproj \
+            --configuration ${{ env.CONFIGURATION }} \
+            --no-build \
+            --output ./packages \
+            /p:PackageVersion=${{ steps.version.outputs.version }} \
+            /p:Version=${{ steps.version.outputs.version }}
+          
+          dotnet pack AgentFramework.Factory.Provider.AzureOpenAI/AgentFramework.Factory.Provider.AzureOpenAI.csproj \
+            --configuration ${{ env.CONFIGURATION }} \
+            --no-build \
+            --output ./packages \
+            /p:PackageVersion=${{ steps.version.outputs.version }} \
+            /p:Version=${{ steps.version.outputs.version }}
+          
+          dotnet pack AgentFramework.Factory.Provider.OpenAI/AgentFramework.Factory.Provider.OpenAI.csproj \
+            --configuration ${{ env.CONFIGURATION }} \
+            --no-build \
+            --output ./packages \
+            /p:PackageVersion=${{ steps.version.outputs.version }} \
+            /p:Version=${{ steps.version.outputs.version }}
+          
+          dotnet pack AgentFramework.Factory.Provider.GitHubModels/AgentFramework.Factory.Provider.GitHubModels.csproj \
+            --configuration ${{ env.CONFIGURATION }} \
+            --no-build \
+            --output ./packages \
+            /p:PackageVersion=${{ steps.version.outputs.version }} \
+            /p:Version=${{ steps.version.outputs.version }}
+      
+      - name: List generated packages
+        run: |
+          echo "Generated NuGet packages:"
+          ls -lh ./packages/*.nupkg
+      
+      - name: Upload packages as artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: nuget-packages
+          path: ./packages/*.nupkg
+          retention-days: 30
+      
+      - name: Create GitHub Release
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ./packages/*.nupkg
+          generate_release_notes: true
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  publish-nuget:
+    name: Publish to NuGet.org
+    runs-on: ubuntu-latest
+    needs: build-and-pack
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
+    environment: nuget-production  # Requires manual approval in GitHub settings
+    
+    steps:
+      - name: Download packages
+        uses: actions/download-artifact@v4
+        with:
+          name: nuget-packages
+          path: ./packages
+      
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+      
+      - name: Publish to NuGet.org
+        run: |
+          for package in ./packages/*.nupkg; do
+            echo "Publishing $package to NuGet.org..."
+            dotnet nuget push "$package" \
+              --api-key ${{ secrets.NUGET_API_KEY }} \
+              --source https://api.nuget.org/v3/index.json \
+              --skip-duplicate
+          done
+        env:
+          NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
