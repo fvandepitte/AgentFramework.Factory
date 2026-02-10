@@ -6,6 +6,10 @@ This example demonstrates how to use the `AgentFramework.Factory` core library i
 
 ```bash
 dotnet add package AgentFramework.Factory
+# Also add a provider package (at least one is required)
+dotnet add package AgentFramework.Factory.Provider.AzureOpenAI
+# Or: dotnet add package AgentFramework.Factory.Provider.OpenAI
+# Or: dotnet add package AgentFramework.Factory.Provider.GitHubModels
 ```
 
 ## Basic Usage
@@ -13,9 +17,12 @@ dotnet add package AgentFramework.Factory
 ### 1. Register Services
 
 ```csharp
-using AgentFramework.Factory.Extensions;
-using Microsoft.Extensions.DependencyInjection;
+using AgentFramework.Factory.Configuration;
+using AgentFramework.Factory.Abstractions;
+using AgentFramework.Factory.Services;
+using AgentFramework.Factory.Provider.AzureOpenAI.Extensions;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 // Build configuration
@@ -29,38 +36,68 @@ var services = new ServiceCollection();
 // Add logging
 services.AddLogging(builder => builder.AddConsole());
 
-// Register Agent Framework Factory
-services.AddAgentFramework(configuration)
-    .AddMarkdownAgents(options =>
-    {
-        options.AgentDefinitionsPath = "./agents";
-        options.AgentFilePattern = "*.md";
-    });
+// Register configuration
+services.AddSingleton<IConfiguration>(configuration);
+
+// Configure AgentFramework.Factory options
+services.Configure<AgentFactoryConfiguration>(configuration.GetSection("agentFactory"));
+services.Configure<ToolsConfiguration>(configuration.GetSection("tools"));
+
+// Register provider(s) - at least one required
+services.AddAzureOpenAIProvider(configuration.GetSection("providers:azureOpenAI"));
+// Or use: services.AddOpenAIProvider(configuration.GetSection("providers:openAI"));
+// Or use: services.AddGitHubModelsProvider(configuration.GetSection("providers:githubModels"));
+
+// Register core factories
+services.AddSingleton<IMarkdownAgentFactory, MarkdownAgentFactory>();
+services.AddSingleton<ProviderFactory>();
+services.AddSingleton<ToolFactory>();
+services.AddSingleton<AgentFactory>();
 
 // Build service provider
 var serviceProvider = services.BuildServiceProvider();
 ```
 
-### 2. Load an Agent
+### 2. Create and Use an Agent
+
+```csharp
+using AgentFramework.Factory.Services;
+
+var agentFactory = serviceProvider.GetRequiredService<AgentFactory>();
+
+// Create an agent from markdown
+var agent = agentFactory.CreateAgentFromMarkdown("./agents/my-agent.md");
+
+// Use the agent
+var session = await agent.GetNewSessionAsync();
+var response = await agent.RunAsync("Hello, can you help me?", session);
+Console.WriteLine(response);
+```
+
+### 3. Load Agent Metadata (without creating AIAgent)
 
 ```csharp
 using AgentFramework.Factory.Abstractions;
 
-var factory = serviceProvider.GetRequiredService<IMarkdownAgentFactory>();
+var markdownFactory = serviceProvider.GetRequiredService<IMarkdownAgentFactory>();
 
 // Load from file
-var agent = factory.LoadAgentFromFile("./agents/my-agent.md");
+var loadedAgent = markdownFactory.LoadAgentFromFile("./agents/my-agent.md");
 
-Console.WriteLine($"Loaded: {agent.Name}");
-Console.WriteLine($"Description: {agent.Description}");
-Console.WriteLine($"Model: {agent.Model}");
-Console.WriteLine($"Temperature: {agent.Temperature}");
-Console.WriteLine($"Tools: {string.Join(", ", agent.Tools)}");
+Console.WriteLine($"Name: {loadedAgent.Name}");
+Console.WriteLine($"Description: {loadedAgent.Description}");
+Console.WriteLine($"Model: {loadedAgent.Model}");
+Console.WriteLine($"Temperature: {loadedAgent.Temperature}");
+Console.WriteLine($"Tools: {string.Join(", ", loadedAgent.Tools)}");
 ```
 
-### 3. Parse Markdown Content
+### 4. Parse Markdown Content
 
 ```csharp
+using AgentFramework.Factory.Abstractions;
+
+var markdownFactory = serviceProvider.GetRequiredService<IMarkdownAgentFactory>();
+
 string markdownContent = @"---
 name: MyAgent
 description: A helpful assistant
@@ -74,10 +111,11 @@ tools: [""search"", ""calculator""]
 You are a helpful assistant.
 ";
 
-var agent = factory.ParseMarkdown(markdownContent);
+var loadedAgent = markdownFactory.ParseMarkdown(markdownContent);
+Console.WriteLine($"Parsed agent: {loadedAgent.Name}");
 ```
 
-### 4. Use with Custom Provider
+### 5. Use with Custom Provider
 
 To use the agent with a custom provider, you'll need to implement `IProviderHandler`:
 
@@ -130,8 +168,7 @@ public class MyCustomProvider : IProviderHandler
 Then register it:
 
 ```csharp
-services.AddAgentFramework(configuration)
-    .AddProvider<MyCustomProvider>();
+services.AddSingleton<IProviderHandler, MyCustomProvider>();
 ```
 
 ## Configuration
@@ -147,11 +184,37 @@ Create an `appsettings.json` file:
     "enableLogging": true,
     "enableToolDiscovery": true
   },
+  "providers": {
+    "azureOpenAI": {
+      "endpoint": "https://my-resource.openai.azure.com/",
+      "deploymentName": "gpt-4o-mini",
+      "apiVersion": "2024-08-01-preview"
+    },
+    "openAI": {
+      "model": "gpt-4o-mini"
+    },
+    "githubModels": {
+      "model": "gpt-4o-mini"
+    }
+  },
   "tools": {
     "enableMcp": false,
     "registeredTools": []
   }
 }
+```
+
+**Note:** Store API keys in user secrets or environment variables:
+
+```bash
+# Azure OpenAI
+dotnet user-secrets set "providers:azureOpenAI:apiKey" "your-key"
+
+# OpenAI
+dotnet user-secrets set "providers:openAI:apiKey" "sk-..."
+
+# GitHub Models
+dotnet user-secrets set "providers:githubModels:token" "ghp_..."
 ```
 
 ## Agent Markdown Format
