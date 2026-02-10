@@ -1,16 +1,19 @@
-using AgentFramework.Factory.TestConsole.Services.Configuration;
+using AgentFramework.Factory.Abstractions;
+using AgentFramework.Factory.Provider.OpenAI.Configuration;
+using AgentFramework.Factory.Services;
 using Microsoft.Extensions.AI;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using System.ClientModel;
 
-namespace AgentFramework.Factory.TestConsole.Services.Providers;
+namespace AgentFramework.Factory.Provider.OpenAI;
 
 /// <summary>
 /// Provider handler for OpenAI
 /// </summary>
 public class OpenAIProviderHandler : BaseProviderHandler
 {
-    private readonly OpenAIConfiguration _config;
+    private readonly OpenAIConfiguration config;
 
     // Common OpenAI models
     private static readonly HashSet<string> SupportedModels = new(StringComparer.OrdinalIgnoreCase)
@@ -25,18 +28,21 @@ public class OpenAIProviderHandler : BaseProviderHandler
         "o1-preview"
     };
 
-    public OpenAIProviderHandler(IOptions<OpenAIConfiguration> openAIConfigOptions)
+    public OpenAIProviderHandler(
+        IOptions<OpenAIConfiguration> openAIConfigOptions,
+        ILogger<OpenAIProviderHandler> logger)
+        : base(logger)
     {
         ArgumentNullException.ThrowIfNull(openAIConfigOptions);
-        _config = openAIConfigOptions.Value;
+        this.config = openAIConfigOptions.Value;
     }
 
     public override string ProviderName => "OpenAI";
 
-    public override bool CanHandleModel(string modelName)
+    public override bool CanHandle(string modelName)
     {
         // Check if OpenAI is configured
-        if (string.IsNullOrEmpty(_config.ApiKey))
+        if (string.IsNullOrEmpty(config.ApiKey))
         {
             return false;
         }
@@ -45,16 +51,16 @@ public class OpenAIProviderHandler : BaseProviderHandler
         return SupportedModels.Contains(modelName);
     }
 
-    public override IChatClient CreateChatClient(string modelName)
+    public override IChatClient? CreateChatClient(string modelName)
     {
-        if (string.IsNullOrEmpty(_config.ApiKey))
+        if (string.IsNullOrEmpty(config.ApiKey))
         {
             throw new InvalidOperationException("OpenAI API key is not configured");
         }
 
         // Create OpenAI chat client using OpenAI client
-        var openAIClient = new OpenAI.OpenAIClient(
-            new ApiKeyCredential(_config.ApiKey));
+        var openAIClient = new global::OpenAI.OpenAIClient(
+            new ApiKeyCredential(config.ApiKey));
 
         IChatClient chatClient = openAIClient
             .GetChatClient(modelName)

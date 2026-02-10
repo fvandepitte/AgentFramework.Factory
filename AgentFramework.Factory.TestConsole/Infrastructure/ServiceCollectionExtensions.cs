@@ -1,13 +1,18 @@
+using AgentFramework.Factory.Abstractions;
+using AgentFramework.Factory.Configuration;
+using AgentFramework.Factory.Extensions;
+using AgentFramework.Factory.Services;
+using AgentFramework.Factory.Provider.AzureOpenAI.Extensions;
+using AgentFramework.Factory.Provider.OpenAI.Extensions;
+using AgentFramework.Factory.Provider.GitHubModels.Extensions;
 using AgentFramework.Factory.TestConsole.Services.Configuration;
-using AgentFramework.Factory.TestConsole.Services.Factories;
-using AgentFramework.Factory.TestConsole.Services.Providers;
-using AgentFramework.Factory.TestConsole.Services.Tools;
 using AgentFramework.Factory.TestConsole.Tools.Samples;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Serilog;
+using CoreMarkdownFactory = AgentFramework.Factory.Services.MarkdownAgentFactory;
 
 namespace AgentFramework.Factory.TestConsole.Infrastructure;
 
@@ -147,20 +152,22 @@ public static class ServiceCollectionExtensions
         services.Configure<AppConfiguration>(configuration);
         services.Configure<AgentFactoryConfiguration>(configuration.GetSection("agentFactory"));
         services.Configure<ProvidersConfiguration>(configuration.GetSection("providers"));
-        services.Configure<AzureOpenAIConfiguration>(configuration.GetSection("providers:azureOpenAI"));
-        services.Configure<OpenAIConfiguration>(configuration.GetSection("providers:openAI"));
-        services.Configure<GitHubModelsConfiguration>(configuration.GetSection("providers:githubModels"));
         services.Configure<ToolsConfiguration>(configuration.GetSection("tools"));
     }
 
     /// <summary>
-    /// Register provider handlers for the Chain of Responsibility pattern
+    /// Register provider handlers using the provider package extension methods
     /// </summary>
     private static void RegisterProviderHandlers(IServiceCollection services)
     {
-        services.AddSingleton<IProviderHandler, AzureOpenAIProviderHandler>();
-        services.AddSingleton<IProviderHandler, OpenAIProviderHandler>();
-        services.AddSingleton<IProviderHandler, GitHubModelsProviderHandler>();
+        // Use provider package extension methods to register providers
+        // These will be automatically configured from appsettings.json via IConfiguration
+        var sp = services.BuildServiceProvider();
+        var configuration = sp.GetRequiredService<IConfiguration>();
+        
+        services.AddAzureOpenAIProvider(configuration.GetSection("providers:azureOpenAI"));
+        services.AddOpenAIProvider(configuration.GetSection("providers:openAI"));
+        services.AddGitHubModelsProvider(configuration.GetSection("providers:githubModels"));
     }
 
     /// <summary>
@@ -181,9 +188,14 @@ public static class ServiceCollectionExtensions
     /// </summary>
     private static void RegisterFactories(IServiceCollection services)
     {
-        services.AddSingleton<MarkdownAgentFactory>();
+        // Register core factories
+        services.AddSingleton<IMarkdownAgentFactory, CoreMarkdownFactory>();
         services.AddSingleton<ProviderFactory>();
         services.AddSingleton<ToolFactory>();
-        services.AddSingleton<AgentFactory>();
+        services.AddSingleton<AgentFramework.Factory.Services.AgentFactory>();
+        
+        // Register TestConsole wrappers for configuration-specific methods
+        services.AddSingleton<TestConsole.Services.MarkdownAgentFactory>();
+        services.AddSingleton<TestConsole.Services.AgentFactory>();
     }
 }

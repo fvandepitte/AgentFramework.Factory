@@ -1,5 +1,5 @@
 using AgentFramework.Factory.TestConsole.Services.Configuration;
-using AgentFramework.Factory.TestConsole.Services.Factories;
+using AgentFramework.Factory.TestConsole.Services;
 using Microsoft.Extensions.Options;
 using Spectre.Console;
 using Spectre.Console.Cli;

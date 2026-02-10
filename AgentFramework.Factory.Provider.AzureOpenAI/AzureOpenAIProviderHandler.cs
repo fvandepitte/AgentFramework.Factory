@@ -1,31 +1,37 @@
-using AgentFramework.Factory.TestConsole.Services.Configuration;
+using AgentFramework.Factory.Abstractions;
+using AgentFramework.Factory.Provider.AzureOpenAI.Configuration;
+using AgentFramework.Factory.Services;
 using Azure.AI.OpenAI;
 using Azure.Identity;
 using Microsoft.Extensions.AI;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using System.ClientModel;
 
-namespace AgentFramework.Factory.TestConsole.Services.Providers;
+namespace AgentFramework.Factory.Provider.AzureOpenAI;
 
 /// <summary>
 /// Provider handler for Azure OpenAI
 /// </summary>
 public class AzureOpenAIProviderHandler : BaseProviderHandler
 {
-    private readonly AzureOpenAIConfiguration _config;
+    private readonly AzureOpenAIConfiguration config;
 
-    public AzureOpenAIProviderHandler(IOptions<AzureOpenAIConfiguration> azureConfigOptions)
+    public AzureOpenAIProviderHandler(
+        IOptions<AzureOpenAIConfiguration> azureConfigOptions,
+        ILogger<AzureOpenAIProviderHandler> logger)
+        : base(logger)
     {
         ArgumentNullException.ThrowIfNull(azureConfigOptions);
-        _config = azureConfigOptions.Value;
+        this.config = azureConfigOptions.Value;
     }
 
     public override string ProviderName => "AzureOpenAI";
 
-    public override bool CanHandleModel(string modelName)
+    public override bool CanHandle(string modelName)
     {
         // Check if Azure OpenAI is configured
-        if (string.IsNullOrEmpty(_config.Endpoint) || string.IsNullOrEmpty(_config.DeploymentName))
+        if (string.IsNullOrEmpty(config.Endpoint) || string.IsNullOrEmpty(config.DeploymentName))
         {
             return false;
         }
@@ -36,14 +42,14 @@ public class AzureOpenAIProviderHandler : BaseProviderHandler
         return true;
     }
 
-    public override IChatClient CreateChatClient(string modelName)
+    public override IChatClient? CreateChatClient(string modelName)
     {
-        if (string.IsNullOrEmpty(_config.Endpoint))
+        if (string.IsNullOrEmpty(config.Endpoint))
         {
             throw new InvalidOperationException("Azure OpenAI endpoint is not configured");
         }
 
-        if (string.IsNullOrEmpty(_config.DeploymentName))
+        if (string.IsNullOrEmpty(config.DeploymentName))
         {
             throw new InvalidOperationException("Azure OpenAI deployment name is not configured");
         }
@@ -51,24 +57,24 @@ public class AzureOpenAIProviderHandler : BaseProviderHandler
         // Create Azure OpenAI client with either API key or DefaultAzureCredential
         AzureOpenAIClient azureClient;
 
-        if (!string.IsNullOrEmpty(_config.ApiKey))
+        if (!string.IsNullOrEmpty(config.ApiKey))
         {
             // Use API key authentication
             azureClient = new AzureOpenAIClient(
-                new Uri(_config.Endpoint),
-                new ApiKeyCredential(_config.ApiKey));
+                new Uri(config.Endpoint),
+                new ApiKeyCredential(config.ApiKey));
         }
         else
         {
             // Use Azure CLI / Managed Identity authentication
             azureClient = new AzureOpenAIClient(
-                new Uri(_config.Endpoint),
+                new Uri(config.Endpoint),
                 new DefaultAzureCredential());
         }
 
         // Get chat client and convert to IChatClient
         IChatClient chatClient = azureClient
-            .GetChatClient(_config.DeploymentName)
+            .GetChatClient(config.DeploymentName)
             .AsIChatClient();
 
         return chatClient;

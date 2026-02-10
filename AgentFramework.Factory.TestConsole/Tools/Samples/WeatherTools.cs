@@ -1,3 +1,4 @@
+using AgentFramework.Factory.Attributes;
 using System.ComponentModel;
 using Microsoft.Extensions.Logging;
 
@@ -6,6 +7,7 @@ namespace AgentFramework.Factory.TestConsole.Tools.Samples;
 /// <summary>
 /// Sample weather tools for demonstration
 /// </summary>
+[LocalTool]
 public class WeatherTools
 {
     private readonly ILogger<WeatherTools> logger;

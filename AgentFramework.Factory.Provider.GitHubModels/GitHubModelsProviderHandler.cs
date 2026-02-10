@@ -1,16 +1,19 @@
-using AgentFramework.Factory.TestConsole.Services.Configuration;
+using AgentFramework.Factory.Abstractions;
+using AgentFramework.Factory.Provider.GitHubModels.Configuration;
+using AgentFramework.Factory.Services;
 using Microsoft.Extensions.AI;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using System.ClientModel;
 
-namespace AgentFramework.Factory.TestConsole.Services.Providers;
+namespace AgentFramework.Factory.Provider.GitHubModels;
 
 /// <summary>
 /// Provider handler for GitHub Models
 /// </summary>
 public class GitHubModelsProviderHandler : BaseProviderHandler
 {
-    private readonly GitHubModelsConfiguration _config;
+    private readonly GitHubModelsConfiguration config;
 
     // GitHub Models supports various models through AI marketplace
     private static readonly HashSet<string> SupportedModels = new(StringComparer.OrdinalIgnoreCase)
@@ -34,18 +37,21 @@ public class GitHubModelsProviderHandler : BaseProviderHandler
         "cohere-command-r-plus"
     };
 
-    public GitHubModelsProviderHandler(IOptions<GitHubModelsConfiguration> githubConfigOptions)
+    public GitHubModelsProviderHandler(
+        IOptions<GitHubModelsConfiguration> githubConfigOptions,
+        ILogger<GitHubModelsProviderHandler> logger)
+        : base(logger)
     {
         ArgumentNullException.ThrowIfNull(githubConfigOptions);
-        _config = githubConfigOptions.Value;
+        this.config = githubConfigOptions.Value;
     }
 
     public override string ProviderName => "GitHubModels";
 
-    public override bool CanHandleModel(string modelName)
+    public override bool CanHandle(string modelName)
     {
         // Check if GitHub Models is configured
-        if (string.IsNullOrEmpty(_config.Token))
+        if (string.IsNullOrEmpty(config.Token))
         {
             return false;
         }
@@ -54,17 +60,17 @@ public class GitHubModelsProviderHandler : BaseProviderHandler
         return SupportedModels.Contains(modelName);
     }
 
-    public override IChatClient CreateChatClient(string modelName)
+    public override IChatClient? CreateChatClient(string modelName)
     {
-        if (string.IsNullOrEmpty(_config.Token))
+        if (string.IsNullOrEmpty(config.Token))
         {
             throw new InvalidOperationException("GitHub token is not configured");
         }
 
         // Create GitHub Models chat client using OpenAI-compatible endpoint
-        var openAIClient = new OpenAI.OpenAIClient(
-            new ApiKeyCredential(_config.Token),
-            new OpenAI.OpenAIClientOptions
+        var openAIClient = new global::OpenAI.OpenAIClient(
+            new ApiKeyCredential(config.Token),
+            new global::OpenAI.OpenAIClientOptions
             {
                 Endpoint = new Uri("https://models.inference.ai.azure.com")
             });

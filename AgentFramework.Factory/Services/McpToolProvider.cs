@@ -1,29 +1,37 @@
-using AgentFramework.Factory.TestConsole.Services.Configuration;
+using AgentFramework.Factory.Abstractions;
+using AgentFramework.Factory.Configuration;
 using Microsoft.Extensions.AI;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using ModelContextProtocol.Client;
 using ModelContextProtocol.Protocol;
 
-namespace AgentFramework.Factory.TestConsole.Services.Tools;
+namespace AgentFramework.Factory.Services;
 
 /// <summary>
 /// Provides tools from MCP (Model Context Protocol) servers
 /// </summary>
 public class McpToolProvider : IToolProvider, IAsyncDisposable
 {
-    private readonly AppConfiguration configuration;
+    private readonly ToolsConfiguration configuration;
+    private readonly ILogger<McpToolProvider> logger;
     private readonly Dictionary<string, AITool> mcpTools = new();
     private readonly Dictionary<string, string> toolToServerMap = new(); // Maps tool name -> server name
     private readonly Dictionary<string, McpClient> mcpClients = new();
     private readonly SemaphoreSlim initializationLock = new(1, 1);
     private bool initialized = false;
 
-    public McpToolProvider(IOptions<AppConfiguration> configOptions)
+    public McpToolProvider(
+        IOptions<ToolsConfiguration> configOptions,
+        ILogger<McpToolProvider> logger)
     {
         ArgumentNullException.ThrowIfNull(configOptions);
-        this.configuration = configOptions.Value;
+        ArgumentNullException.ThrowIfNull(logger);
         
-        if (configuration.Tools.EnableMcp && configuration.McpServers.Any())
+        this.configuration = configOptions.Value;
+        this.logger = logger;
+        
+        if (configuration.EnableMcp && configuration.McpConnections.Any())
         {
             // Initialize synchronously for now - proper async initialization would require IHostedService
             InitializeMcpServers().GetAwaiter().GetResult();
@@ -114,32 +122,24 @@ public class McpToolProvider : IToolProvider, IAsyncDisposable
             if (initialized)
                 return;
 
-            if (configuration.AgentFactory.EnableLogging)
-            {
-                Console.WriteLine($"  ℹ Initializing MCP connections...");
-            }
+            logger.LogInformation("Initializing MCP connections...");
 
-            foreach (var serverConfig in configuration.McpServers)
+            foreach (var (serverName, serverConfig) in configuration.McpConnections)
             {
                 try
                 {
-                    await ConnectToServerAsync(serverConfig);
+                    await ConnectToServerAsync(serverName, serverConfig);
                 }
                 catch (Exception ex)
                 {
-                    if (configuration.AgentFactory.EnableLogging)
-                    {
-                        Console.WriteLine($"  ⚠ Failed to connect to MCP server '{serverConfig.Name}': {ex.Message}");
-                    }
+                    logger.LogWarning(ex, "Failed to connect to MCP server '{ServerName}'", serverName);
                 }
             }
 
             initialized = true;
 
-            if (configuration.AgentFactory.EnableLogging)
-            {
-                Console.WriteLine($"  ✓ MCP tool provider initialized with {mcpTools.Count} tool(s) from {mcpClients.Count} server(s)");
-            }
+            logger.LogInformation("MCP tool provider initialized with {ToolCount} tool(s) from {ServerCount} server(s)", 
+                mcpTools.Count, mcpClients.Count);
         }
         finally
         {
@@ -150,7 +150,7 @@ public class McpToolProvider : IToolProvider, IAsyncDisposable
     /// <summary>
     /// Connects to an MCP server and discovers its tools
     /// </summary>
-    private async Task ConnectToServerAsync(McpServerConfiguration serverConfig)
+    private async Task ConnectToServerAsync(string serverName, McpConnectionConfiguration serverConfig)
     {
         IClientTransport transport;
 
@@ -159,7 +159,7 @@ public class McpToolProvider : IToolProvider, IAsyncDisposable
         {
             if (string.IsNullOrEmpty(serverConfig.Url))
             {
-                throw new InvalidOperationException($"HTTP MCP server '{serverConfig.Name}' must have a URL configured");
+                throw new InvalidOperationException($"HTTP MCP server '{serverName}' must have a URL configured");
             }
 
             // Create HttpClient with custom headers if configured
@@ -187,14 +187,15 @@ public class McpToolProvider : IToolProvider, IAsyncDisposable
         {
             if (string.IsNullOrEmpty(serverConfig.Command))
             {
-                throw new InvalidOperationException($"Stdio MCP server '{serverConfig.Name}' must have a command configured");
+                throw new InvalidOperationException($"Stdio MCP server '{serverName}' must have a command configured");
             }
 
             var envVars = serverConfig.Environment?.ToDictionary(kv => kv.Key, kv => (string?)kv.Value) 
                 ?? new Dictionary<string, string?>();
+            
             transport = new StdioClientTransport(new StdioClientTransportOptions
             {
-                Name = serverConfig.Name,
+                Name = serverName,
                 Command = serverConfig.Command,
                 Arguments = serverConfig.Args ?? [],
                 EnvironmentVariables = envVars
@@ -218,15 +219,13 @@ public class McpToolProvider : IToolProvider, IAsyncDisposable
             }
         );
 
-        mcpClients[serverConfig.Name] = client;
+        mcpClients[serverName] = client;
 
-        if (configuration.AgentFactory.EnableLogging)
-        {
-            Console.WriteLine($"  ✓ Connected to MCP server: {serverConfig.Name} ({client.ServerInfo.Name} v{client.ServerInfo.Version})");
-        }
+        logger.LogInformation("Connected to MCP server: {ServerName} ({ServerInfo} v{Version})", 
+            serverName, client.ServerInfo.Name, client.ServerInfo.Version);
 
         // Discover tools
-        await DiscoverToolsFromServerAsync(serverConfig.Name, client);
+        await DiscoverToolsFromServerAsync(serverName, client);
     }
 
     /// <summary>
@@ -243,20 +242,15 @@ public class McpToolProvider : IToolProvider, IAsyncDisposable
             
             if (mcpTools.ContainsKey(toolKey))
             {
-                if (configuration.AgentFactory.EnableLogging)
-                {
-                    Console.WriteLine($"  ⚠ Tool '{toolKey}' already registered, skipping duplicate from server '{serverName}'");
-                }
+                logger.LogWarning("Tool '{ToolName}' already registered, skipping duplicate from server '{ServerName}'", 
+                    toolKey, serverName);
                 continue;
             }
 
             mcpTools[toolKey] = mcpTool;
             toolToServerMap[toolKey] = serverName;
 
-            if (configuration.AgentFactory.EnableLogging)
-            {
-                Console.WriteLine($"  ✓ Registered MCP tool: {toolKey} from {serverName}");
-            }
+            logger.LogInformation("Registered MCP tool: {ToolName} from {ServerName}", toolKey, serverName);
         }
     }
 

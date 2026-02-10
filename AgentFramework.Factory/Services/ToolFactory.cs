@@ -1,33 +1,39 @@
-using AgentFramework.Factory.TestConsole.Services.Configuration;
+using AgentFramework.Factory.Abstractions;
+using AgentFramework.Factory.Configuration;
 using Microsoft.Extensions.AI;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
-namespace AgentFramework.Factory.TestConsole.Services.Tools;
+namespace AgentFramework.Factory.Services;
 
 /// <summary>
 /// Factory for managing and retrieving tools from multiple providers
 /// </summary>
 public class ToolFactory
 {
-    private readonly AppConfiguration configuration;
+    private readonly AgentFactoryConfiguration configuration;
     private readonly List<IToolProvider> toolProviders;
+    private readonly ILogger<ToolFactory> logger;
 
     public ToolFactory(
-        IOptions<AppConfiguration> configOptions,
-        IEnumerable<IToolProvider> providers)
+        IOptions<AgentFactoryConfiguration> configOptions,
+        IEnumerable<IToolProvider> providers,
+        ILogger<ToolFactory> logger)
     {
         ArgumentNullException.ThrowIfNull(configOptions);
         ArgumentNullException.ThrowIfNull(providers);
+        ArgumentNullException.ThrowIfNull(logger);
         
         this.configuration = configOptions.Value;
         this.toolProviders = providers.ToList();
+        this.logger = logger;
 
-        if (configuration.AgentFactory.EnableLogging)
+        if (configuration.EnableLogging)
         {
-            Console.WriteLine($"  ℹ ToolFactory initialized with {toolProviders.Count} provider(s):");
+            logger.LogInformation("ToolFactory initialized with {Count} provider(s)", toolProviders.Count);
             foreach (var provider in toolProviders)
             {
-                Console.WriteLine($"    - {provider.Name} ({provider.Type})");
+                logger.LogInformation("  - {Name} ({Type})", provider.Name, provider.Type);
             }
         }
     }
@@ -46,9 +52,6 @@ public class ToolFactory
         var tools = new List<AITool>();
         var notFound = new List<string>();
         var addedToolNames = new HashSet<string>();
-        
-        // Get MCP provider for server-specific lookups
-        var mcpProvider = toolProviders.OfType<McpToolProvider>().FirstOrDefault();
 
         foreach (var toolName in toolNames)
         {
@@ -64,9 +67,9 @@ public class ToolFactory
                         if (addedToolNames.Add(name))
                         {
                             tools.Add(tool);
-                            if (configuration.AgentFactory.EnableLogging)
+                            if (configuration.EnableLogging)
                             {
-                                Console.WriteLine($"  ✓ Added tool '{name}' from {prov.Name} provider (wildcard *)");
+                                logger.LogInformation("  ✓ Added tool '{Name}' from {Provider} provider (wildcard *)", name, prov.Name);
                             }
                         }
                     }
@@ -83,17 +86,18 @@ public class ToolFactory
                 if (pattern.Equals("mcp", StringComparison.OrdinalIgnoreCase))
                 {
                     // All MCP tools from all servers
-                    if (mcpProvider != null)
+                    var mcpProviders = toolProviders.Where(p => p.Type.Equals("mcp", StringComparison.OrdinalIgnoreCase));
+                    foreach (var prov in mcpProviders)
                     {
-                        foreach (var tool in mcpProvider.GetAllTools())
+                        foreach (var tool in prov.GetAllTools())
                         {
                             var name = GetToolName(tool);
                             if (addedToolNames.Add(name))
                             {
                                 tools.Add(tool);
-                                if (configuration.AgentFactory.EnableLogging)
+                                if (configuration.EnableLogging)
                                 {
-                                    Console.WriteLine($"  ✓ Added tool '{name}' from MCP provider (wildcard mcp/*)");
+                                    logger.LogInformation("  ✓ Added tool '{Name}' from MCP provider (wildcard mcp/*)", name);
                                 }
                             }
                         }
@@ -112,9 +116,9 @@ public class ToolFactory
                             if (addedToolNames.Add(name))
                             {
                                 tools.Add(tool);
-                                if (configuration.AgentFactory.EnableLogging)
+                                if (configuration.EnableLogging)
                                 {
-                                    Console.WriteLine($"  ✓ Added tool '{name}' from Local provider (wildcard local/*)");
+                                    logger.LogInformation("  ✓ Added tool '{Name}' from Local provider (wildcard local/*)", name);
                                 }
                             }
                         }
@@ -122,25 +126,25 @@ public class ToolFactory
                     continue;
                 }
 
-                // Otherwise, treat as MCP server name pattern (e.g., "github/*")
-                if (mcpProvider != null && mcpProvider.HasServer(pattern))
+                // Otherwise, treat as server-specific pattern
+                // For MCP servers, we need provider-specific logic
+                var mcpProvider = toolProviders.FirstOrDefault(p => p.Type.Equals("mcp", StringComparison.OrdinalIgnoreCase));
+                if (mcpProvider != null)
                 {
-                    foreach (var tool in mcpProvider.GetToolsFromServer(pattern))
+                    // Try to get tools matching the pattern - this requires provider-specific implementation
+                    var serverTools = mcpProvider.GetTools(new[] { toolName });
+                    foreach (var tool in serverTools)
                     {
                         var name = GetToolName(tool);
                         if (addedToolNames.Add(name))
                         {
                             tools.Add(tool);
-                            if (configuration.AgentFactory.EnableLogging)
+                            if (configuration.EnableLogging)
                             {
-                                Console.WriteLine($"  ✓ Added tool '{name}' from MCP server '{pattern}' (wildcard {toolName})");
+                                logger.LogInformation("  ✓ Added tool '{Name}' (wildcard {Pattern})", name, toolName);
                             }
                         }
                     }
-                }
-                else if (configuration.AgentFactory.EnableLogging)
-                {
-                    Console.WriteLine($"  ⚠ No MCP server found matching pattern '{pattern}'");
                 }
                 continue;
             }
@@ -148,28 +152,33 @@ public class ToolFactory
             // Handle server-qualified tool names (e.g., "github/search_repositories")
             if (toolName.Contains('/'))
             {
-                var parts = toolName.Split('/', 2);
-                var serverName = parts[0];
-                var actualToolName = parts[1];
-
-                if (mcpProvider != null)
+                // Try each provider to see if it can handle qualified names
+                var found = false;
+                foreach (var prov in toolProviders)
                 {
-                    var tool = mcpProvider.GetToolByQualifiedName(serverName, actualToolName);
-                    if (tool != null)
+                    if (prov.CanProvide(toolName))
                     {
-                        var name = GetToolName(tool);
-                        if (addedToolNames.Add(name))
+                        var tool = prov.GetTools(new[] { toolName }).FirstOrDefault();
+                        if (tool != null)
                         {
-                            tools.Add(tool);
-                            if (configuration.AgentFactory.EnableLogging)
+                            var name = GetToolName(tool);
+                            if (addedToolNames.Add(name))
                             {
-                                Console.WriteLine($"  ✓ Added tool '{name}' from MCP server '{serverName}'");
+                                tools.Add(tool);
+                                if (configuration.EnableLogging)
+                                {
+                                    logger.LogInformation("  ✓ Added tool '{Name}' from {Provider}", name, prov.Name);
+                                }
+                                found = true;
+                                break;
                             }
                         }
-                        continue;
                     }
                 }
-                notFound.Add(toolName);
+                if (!found)
+                {
+                    notFound.Add(toolName);
+                }
                 continue;
             }
 
@@ -185,9 +194,9 @@ public class ToolFactory
                     {
                         tools.Add(tool);
                         
-                        if (configuration.AgentFactory.EnableLogging)
+                        if (configuration.EnableLogging)
                         {
-                            Console.WriteLine($"  ✓ Resolved tool '{toolName}' from {provider.Name} provider");
+                            logger.LogInformation("  ✓ Resolved tool '{ToolName}' from {Provider} provider", toolName, provider.Name);
                         }
                     }
                 }
@@ -198,16 +207,16 @@ public class ToolFactory
             }
         }
 
-        if (notFound.Any() && configuration.AgentFactory.EnableLogging)
+        if (notFound.Any() && configuration.EnableLogging)
         {
-            Console.WriteLine($"  ⚠ Could not find tools: {string.Join(", ", notFound)}");
+            logger.LogWarning("  ⚠ Could not find tools: {Tools}", string.Join(", ", notFound));
         }
 
         return tools;
     }
 
     /// <summary>
-    /// Extracts the name from an AITool (handles both AIFunction and McpClientTool)
+    /// Extracts the name from an AITool (handles both AIFunction and other types)
     /// </summary>
     private static string GetToolName(AITool tool)
     {
@@ -216,7 +225,7 @@ public class ToolFactory
             return aiFunction.Name;
         }
         
-        // For McpClientTool and other types, try to get name via reflection or type name
+        // For other types, try to get name via reflection
         var nameProperty = tool.GetType().GetProperty("Name");
         if (nameProperty != null)
         {
