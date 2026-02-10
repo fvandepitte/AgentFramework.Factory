@@ -472,13 +472,13 @@ This means our **Markdown-to-Agent factory** fills a real gap in the .NET ecosys
 
 ```bash
 # Azure OpenAI
-dotnet user-secrets set "providers:azureOpenAI:apiKey" "your-key"
+dotnet user-secrets set "providers:azureOpenAI:apiKey" "YOUR_AZURE_OPENAI_API_KEY"
 
 # OpenAI
-dotnet user-secrets set "providers:openAI:apiKey" "sk-..."
+dotnet user-secrets set "providers:openAI:apiKey" "YOUR_OPENAI_API_KEY"
 
 # GitHub Models
-dotnet user-secrets set "providers:githubModels:token" "ghp_..."
+dotnet user-secrets set "providers:githubModels:token" "YOUR_GITHUB_TOKEN"
 ```
 
 ### How It Works
