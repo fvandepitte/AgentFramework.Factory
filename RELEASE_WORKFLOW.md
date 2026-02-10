@@ -26,7 +26,36 @@ The workflow creates and publishes the following NuGet packages:
 
 ## Release Process
 
-### Automatic Release (Tag-Based)
+### Automated Tag Creation (Recommended)
+
+The easiest way to create a release is to use the automated tag creation workflow:
+
+1. **Navigate to the workflow:**
+   - Go to **Actions** → **Create Release Tag**
+   - Click **Run workflow**
+
+2. **Select version bump type:**
+   - **Patch** (v1.0.0 → v1.0.1): Bug fixes, backward compatible
+   - **Minor** (v1.0.0 → v1.1.0): New features, backward compatible
+   - **Major** (v1.0.0 → v2.0.0): Breaking changes, incompatible API
+
+3. **Optional - Specify custom version:**
+   - Leave empty to auto-increment based on the latest tag
+   - Or enter a specific version (e.g., `1.5.0`)
+
+4. **Run the workflow:**
+   - Click **Run workflow** button
+   - The workflow will automatically create and push the tag
+   - This triggers the **Library Package** workflow automatically
+
+5. **Monitor the release:**
+   - The tag creation triggers the package build and publish workflow
+   - Go to **Actions** to monitor progress
+   - Check **Releases** for the published release
+
+### Manual Tag Creation
+
+If you prefer to create tags manually via git:
 
 1. **Determine the version bump:**
    - **Major**: Breaking changes (e.g., `v1.0.0` → `v2.0.0`)
@@ -50,16 +79,16 @@ The workflow creates and publishes the following NuGet packages:
    - Verify packages are attached to the release
    - Confirm packages appear on NuGet.org (may take a few minutes)
 
-### Manual Release
+### Manual Package Build (Without Publishing)
 
-If you need to create a release without pushing a tag:
+If you need to create packages without publishing:
 
 1. Go to **Actions** → **Library Package**
 2. Click **Run workflow**
 3. Enter the version number (without 'v' prefix, e.g., `1.2.3`)
 4. Click **Run workflow** button
 
-**Note:** Manual releases will create packages but won't automatically publish to NuGet.org or create GitHub releases. You'll need to download the artifacts and publish manually if needed.
+**Note:** Manual builds create packages but won't automatically publish to NuGet.org or create GitHub releases. You'll need to download the artifacts and publish manually if needed.
 
 ## Workflow Steps
 

@@ -32,9 +32,23 @@ This repository uses automated versioning and package publishing via GitHub Acti
 - ✅ Publishes packages to NuGet.org
 - ✅ Creates a GitHub release with attached artifacts
 
-### Releasing a New Version
+### Releasing a New Version (Recommended Method)
 
-To release a new version, create and push a semantic version tag:
+The easiest way to create a release is via the automated tag creation workflow:
+
+1. Go to **Actions** → **Create Release Tag** → **Run workflow**
+2. Select version bump type: **patch**, **minor**, or **major**
+3. Optionally specify a custom version (or leave empty to auto-increment)
+4. Click **Run workflow** - the tag is created and the release is published automatically!
+
+**Version bump types:**
+- **Patch** (v1.0.0 → v1.0.1): Bug fixes
+- **Minor** (v1.0.0 → v1.1.0): New features  
+- **Major** (v1.0.0 → v2.0.0): Breaking changes
+
+### Manual Tag Creation
+
+You can also create tags manually via git:
 
 ```bash
 # Major version (breaking changes): v1.0.0 → v2.0.0
@@ -57,21 +71,14 @@ The workflow will automatically:
 4. Upload packages as GitHub release artifacts
 5. Publish to NuGet.org (requires `NUGET_API_KEY` secret)
 
-### Manual Release
-
-You can also trigger a release manually via GitHub Actions:
-
-1. Go to **Actions** → **Library Package**
-2. Click **Run workflow**
-3. Enter the version (e.g., `1.2.3`)
-4. Click **Run workflow**
-
 ### Available Packages
 
 - `AgentFramework.Factory` - Core library
 - `AgentFramework.Factory.Provider.AzureOpenAI` - Azure OpenAI provider
 - `AgentFramework.Factory.Provider.OpenAI` - OpenAI provider
 - `AgentFramework.Factory.Provider.GitHubModels` - GitHub Models provider
+
+For detailed release instructions and troubleshooting, see [RELEASE_WORKFLOW.md](RELEASE_WORKFLOW.md).
 
 ## Project Structure
 
