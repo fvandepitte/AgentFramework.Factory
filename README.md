@@ -1,11 +1,15 @@
-# Agent Framework Markdown Factory
+# AgentFramework.Factory – Declarative Agents for .NET
 
-> **⚡ Now Available as a Reusable Library!**  
-> The core `AgentFramework.Factory` package provides a standalone, reusable library for creating AI agents from markdown definitions. Use it in any .NET application without the TestConsole.
+The **AgentFramework.Factory** library lets developers define and run AI agents in .NET using plain Markdown files.  It bridges the gap between declarative agent definitions (familiar from [GitHub Copilot’s `agents.md`](https://copilot.github.com/docs)) and the Microsoft Agent Framework, which currently only supports declarative workflows.  With this library you can author agents in a human‑readable format, plug in different Large Language Model (LLM) providers, and run conversations without writing boilerplate code.
 
-## 📦 Quick Start
+## Why use AgentFramework.Factory?
 
-### Using the Core Library
+- **Markdown‑based definitions** – Agents are described in `.md` files with YAML front matter for metadata (name, description, model, tools, temperature, etc.) and Markdown content for persona, examples and boundaries.  This format is easy to read, version and modify.
+- **Provider‑agnostic** – A chain‑of‑responsibility pattern automatically selects the right LLM provider (Azure OpenAI, OpenAI, GitHub Models or custom providers) based on the model requested.  You can register multiple providers and the library will fall back to the next one if the previous cannot serve a request.
+- **Fluent builder API** – Services are registered via extension methods that return an `IAgentFrameworkBuilder`, allowing you to configure agent definitions, providers, tool providers and options with fluent calls.
+- **Extensible tool system** – Custom tools are supplied via `IToolProvider` implementations; they can be wired into your agents and invoked by the LLM.  Built‑in examples include simple functions and external API calls.
+- **Flexible configuration** – You can specify agent definition paths, file patterns, default provider and other options via JSON or code‑based configuration.
+- **NuGet‑ready and open source** – The library is packaged for .NET developers and includes optional provider packages for Azure OpenAI, OpenAI and GitHub Models.
 
 ```bash
 dotnet add package AgentFramework.Factory
@@ -243,281 +247,108 @@ var yaml = yamlBlock?.Lines.ToString();
 ```csharp
 using YamlDotNet.Serialization;
 
-var deserializer = new DeserializerBuilder().Build();
-var metadata = deserializer.Deserialize<AgentMetadata>(yaml);
+1. **Install the package.**  Add the core library to your project:
 
-public class AgentMetadata
-{
-    public string Name { get; set; }
-    public string Description { get; set; }
-    public List<string> Tools { get; set; }
-}
+   ```bash
+   dotnet add package AgentFramework.Factory
+   ```
+   To use specific LLM providers, also install the corresponding provider package (e.g. `AgentFramework.Factory.Provider.AzureOpenAI`).
+
+2. **Register services and load agents.**  In your `Program.cs` or wherever you configure services, register the framework and your agents:
+
+   ```csharp
+   using AgentFramework.Factory;
+   using AgentFramework.Factory.Provider.OpenAI;
+
+   var services = new ServiceCollection();
+
+   services
+       // register the core framework and load Markdown agents from a folder
+       .AddAgentFramework(configuration)
+       .AddMarkdownAgents(options => {
+           options.AgentDefinitionsPath = "./agents";     // folder containing .md agent definitions
+       })
+       // add an OpenAI provider (also supports Azure OpenAI or GitHub Models)
+       .AddOpenAIProvider(options => {
+           options.ApiKey = "<your-api-key>";
+           options.DefaultModel = "gpt-4";
+       })
+       // optionally add tool providers
+       .AddToolProvider<MyCustomToolProvider>();
+
+   var serviceProvider = services.BuildServiceProvider();
+
+   // get the agent factory and load an agent by file
+   var factory = serviceProvider.GetRequiredService<IMarkdownAgentFactory>();
+   var loadedAgent = await factory.CreateAgentByName("my-agent");
+   ```
+
+
+### Defining an agent in Markdown
+
+Agents are defined in Markdown files.  The YAML front matter contains metadata such as the agent’s name, model and tools, while the Markdown body specifies the persona and examples.  A minimal agent might look like this:
+
+```markdown
+---
+name: greeting-agent
+description: A polite bot that greets the user.
+model: gpt-4
+temperature: 0.2
+tools:
+  - WeatherTool
+---
+
+# Persona
+
+You are a friendly assistant who greets the user and can also tell the weather using the WeatherTool.
+
+## Examples
+
+- User: Hi!
+  Assistant: Hello!  How can I help you today?
 ```
 
-**Resources:**
-- [Rendering Markdown to HTML and Parsing YAML Front Matter in C#](https://markheath.net/post/markdown-html-yaml-front-matter)
-- [Extract Front Matter from Markdown file in .NET Core using Markdig](https://atashbahar.com/post/2020-06-16-extract-front-matter-in-dotnet-with-markdig)
-- [Strongly-Typed Markdown for ASP.NET Core Content Apps](https://khalidabuhakmeh.com/strongly-typed-markdown-for-aspnet-core-content-apps)
+Place your `.md` files in the folder configured via `options.AgentDefinitionsPath`.  The framework will scan the directory and load all definitions.
 
----
+## Architecture overview
 
-### 3. **EPS.Extensions.YamlMarkdown**
-- **Unified solution** combining Markdig + YamlDotNet
-- Single class handles frontmatter extraction, deserialization, and HTML rendering
-- Good for quick setup and simpler workflows
+The library is organised into several abstractions to keep your code decoupled and extensible:
 
-**NuGet:** `EPS.Extensions.YamlMarkdown`
+1. **`IMarkdownAgentFactory`** – Main entry point to load agents from Markdown files.  It parses YAML metadata, constructs an `ILoadedAgent`, validates configuration and wires up providers and tools
+2. **`ILoadedAgent`** – Represents a parsed agent.
+3. **`IProviderHandler`** – Implements the chain‑of‑responsibility pattern for LLM providers.  Each handler decides if it can serve a model; if not, it passes the request down the chain.
+4. **`IToolProvider`** – Supplies custom tools that the agent can invoke during conversations.  Tools are described in YAML and implemented in code.
+5. **Fluent builder** – Extension methods (`AddAgentFramework`, `AddMarkdownAgents`, `AddOpenAIProvider`, etc.) return an `IAgentFrameworkBuilder` so you can chain configuration calls fluently.
 
-**Resources:**
-- [NuGet Gallery | EPS.Extensions.YamlMarkdown](https://www.nuget.org/packages/EPS.Extensions.YamlMarkdown/)
+## Provider packages
 
----
+The core library is provider‑agnostic.  Optional packages implement specific LLM providers and follow a common configuration pattern:
 
-### 4. **Alternative Libraries** (For Comparison)
+| Provider package | Configuration | Notes |
+| --- | --- | --- |
+| **AgentFramework.Factory.Provider.AzureOpenAI** | API key or Managed Identity, resource name and deployment name | Suitable for Azure OpenAI resources |
+| **AgentFramework.Factory.Provider.OpenAI** | API key and default model | Supports chat and completion models |
+| **AgentFramework.Factory.Provider.GitHub** | GitHub personal access token or default credentials | Leverages GitHub Models via GitHub Copilot infrastructure |
 
-#### **Aspose.HTML for .NET**
-- Enterprise-level, commercial
-- Supports Markdown + many other formats (HTML, PDF, DOCX)
-- Requires licensing
+You can implement your own providers by inheriting from `IProviderHandler` and registering them through the builder API.  The provider options pattern ensures configuration is consistent across packages.
 
-#### **MarkdownSharpCore**
-- Lightweight, .NET 6+ fork of MarkdownSharp
-- Simple Markdown-to-HTML conversion
-- Lacks advanced extensions
+## Extending the framework
 
-#### **Waher.Content.Markdown**
-- Extensible parser with custom renderer support
-- Non-HTML export options
+AgentFramework.Factory is designed to be extensible:
 
-#### **MarkdownDeep**
-- Performance-focused, legacy
-- No longer actively maintained
+- **Add custom tools.**  Implement `IToolProvider` and register it with `AddToolProvider<T>()`.  Tools can expose functions, data sources or third‑party APIs to your agent.
+- **Create new providers.**  Subclass `IProviderHandler` to integrate additional LLMs or custom back‑ends.  Register them with `AddProviderHandler<T>()`.  The chain‑of‑responsibility ensures fallback when a provider cannot handle a model.
+- **Watch for file changes.**  A future enhancement proposes hot‑reloading Markdown files; you can contribute or fork the library to add this feature.
 
----
+## Further resources
 
-## Similar Projects & Standards
+The repository contains several additional documents that explain the design in more depth:
 
-### 1. **AGENTS.md**
-Open standard for AI coding agents (Copilot, Cursor, Codex). Used by **60,000+ open-source projects** to provide project-specific instructions in a single markdown file.
+- **`AgentFramework.Factory/README.md`** – Describes core abstractions, interfaces and classes.
+- **`EXTENSIBILITY.md`** – Shows how to extend the framework by writing custom providers and tool providers.
+- **`PROVIDER_PACKAGES_SUMMARY.md`** – Lists all provider packages and their configuration.
+- **`IMPLEMENTATION_SUMMARY.md`** – Summarises the motivation, architecture and potential future enhancements.
 
-**Resources:**
-- [AGENTS.md – OpenAI Codex, GitHub Copilot & Cursor AI](https://agentsmd.io/)
-- [AGENTS.md](https://agents.md/)
-- [Improve your AI code output with AGENTS.md](https://www.builder.io/blog/agents-md)
+## Contributing & License
 
----
-
-### 2. **MAGI (Markdown for Agent Guidance & Instruction)**
-Extended Markdown standard for agent workflows, designed for better **RAG (Retrieval-Augmented Generation)** and structure preservation.
-
-**Resources:**
-- [Introduction - MAGI (Markdown for AI Agents)](https://docs.magi-mda.org/introduction)
-
----
-
-### 3. **AI Coding Agent Manager (andrlange/ai-coding)**
-Web application (Java/Spring Boot) for managing AI agent descriptions in Markdown. Supports organizing, editing, searching, and previewing agent configurations.
-
-**Resources:**
-- [GitHub - andrlange/ai-coding](https://github.com/andrlange/ai-coding)
-
----
-
-### 4. **TaskMaster & Markdown-Based Workflows**
-Uses structured Markdown as Project Requirement Documents (PRDs) that AI agents parse into actionable tasks.
-
-**Resources:**
-- [Markdown as AI Interface in Modern Development](https://llmtuts.com/tutorials/makdown-ai-dev-workflow/index.html)
-
----
-
-### 5. **Markdown-First Documentation Systems**
-Systems like **Mintlify**, **Fumadocs**, and **Lingo.dev** serve content directly as Markdown to AI agents via content negotiation.
-
-**Resources:**
-- [How to serve Markdown to AI agents](https://dev.to/lingodotdev/how-to-serve-markdown-to-ai-agents-making-your-docs-more-ai-friendly-4pdn)
-
----
-
-### 6. **Other Agent Frameworks**
-While not Markdown-focused, frameworks like **LangGraph**, **CrewAI**, and **Qwen-Agent** often interface with Markdown documentation for RAG and multi-agent orchestration.
-
-**Resources:**
-- [Top 10 AI Agent Projects to Build in 2026](https://www.datacamp.com/blog/top-ai-agent-projects)
-- [Top 18 Open Source AI Agent Projects](https://www.nocobase.com/en/blog/github-open-source-ai-agent-projects)
-
----
-
-## Key Finding: MAF Declarative Support Status
-
-**Important Discovery (2026-01-30):**
-
-After investigating the Microsoft Agent Framework's declarative support:
-
-### ✅ What Works in .NET
-- **Declarative Workflows**: The `Microsoft.Agents.AI.Workflows.Declarative` package supports YAML-based **workflow orchestration** (multi-agent, sequential, conditional, concurrent patterns)
-- **Code-First Agents**: Fully supported and well-documented
-- **Markdown Parsing**: Successfully tested with **Markdig + YamlDotNet** - can parse YAML frontmatter and markdown body
-
-### ❓ What's Limited
-- **Declarative Individual Agents**: Python has `agent-framework-declarative` package for YAML agent definitions, but .NET support is primarily workflow-focused
-- The .NET framework expects agents to be created programmatically, then orchestrated via declarative workflows
-
-### 💡 Our Opportunity
-This means our **Markdown-to-Agent factory** fills a real gap in the .NET ecosystem:
-- GitHub Copilot uses markdown for agents ✅
-- Python MAF supports declarative agents ✅
-- .NET MAF supports declarative workflows ✅
-- **Missing**: .NET declarative agent definitions from markdown ⭐ **← This is what we're building!**
-
-### 🔗 Official Links
-- **Declarative Workflows (.NET)**: https://learn.microsoft.com/en-us/agent-framework/user-guide/workflows/declarative-workflows
-- **Python Declarative Samples**: https://github.com/microsoft/agent-framework/tree/main/python/samples/getting_started/declarative
-- **AgentSchema Spec**: https://microsoft.github.io/AgentSchema/
-- **NuGet Package**: https://www.nuget.org/packages/Microsoft.Agents.AI.Workflows.Declarative
-
----
-
-## Implementation Strategy
-
-### Phase 1: Research & Design ✅
-- [x] Identify markdown parsing libraries (Markdig + YamlDotNet recommended)
-- [x] Study GitHub Copilot agent format
-- [x] Review Microsoft Agent Framework configuration patterns
-- [x] Analyze similar projects and standards
-- [x] Test markdown parsing with Markdig + YamlDotNet (successful!)
-- [x] Identify gap in .NET ecosystem for declarative agent definitions
-
-### Phase 2: Core Development ✅
-- [x] Create markdown schema for agent definitions
-- [x] Implement markdown parser using Markdig
-- [x] Build YAML frontmatter deserializer with YamlDotNet
-- [x] Map markdown structure to Microsoft Agent Framework agent objects
-- [x] Handle tool definitions, instructions, and metadata
-
-### Phase 3: Factory Pattern Implementation ✅
-- [x] Design factory interface for agent creation
-- [x] Implement markdown-to-agent factory
-- [x] Add validation and error handling
-- [x] Support multiple agent types and configurations
-- [x] **Implement Chain of Responsibility pattern for provider selection**
-
-### Phase 4: Testing & Documentation ✅
-- [x] Create example agent markdown files
-- [x] Document usage and examples
-- [ ] Write unit tests for parser and factory
-- [ ] Build integration tests with Agent Framework
-
-### Phase 5: Extension Features
-- [ ] Support agent workflow definitions
-- [ ] Enable multi-agent orchestration via markdown
-- [ ] Add template system for common agent patterns
-- [ ] Implement hot-reload for development
-
----
-
-## Chain of Responsibility Pattern for Provider Selection
-
-**New in Phase 3**: The factory now implements the **Chain of Responsibility** design pattern for intelligent provider routing and automatic fallback.
-
-### Key Features
-
-✅ **Automatic Fallback**: If a provider cannot handle a model, the next provider in the chain is tried automatically  
-✅ **Model-Based Routing**: Each provider determines if it can handle a specific model (e.g., `gpt-4o`, `llama-3.2`)  
-✅ **Configurable Chain Order**: Define provider priority in configuration  
-✅ **Resilient to Failures**: Gracefully handles provider outages by falling back to alternatives  
-✅ **Zero Code Changes**: Just configure the provider chain, the factory handles the rest  
-
-### Configuration Example
-
-```json
-{
-  "agentFactory": {
-    "defaultProvider": "azureOpenAI",
-    "providerChain": ["azureOpenAI", "openAI", "githubModels"],
-    "enableLogging": true
-  },
-  "providers": {
-    "azureOpenAI": {
-      "endpoint": "https://my-resource.openai.azure.com",
-      "deploymentName": "gpt-4"
-    },
-    "openAI": {
-      "apiKey": "sk-...",
-      "model": "gpt-4o-mini"
-    },
-    "githubModels": {
-      "token": "ghp_...",
-      "model": "llama-3.2"
-    }
-  }
-}
-```
-
-### How It Works
-
-1. **Request**: `CreateChatClient("llama-3.2")`
-2. **Azure OpenAI**: ❌ Cannot handle this model
-3. **OpenAI**: ❌ Model not in catalog
-4. **GitHub Models**: ✅ Supports llama-3.2 → Returns client
-
-### Documentation
-
-- [CHAIN_OF_RESPONSIBILITY.md](./AgentFramework.Factory.TestConsole/CHAIN_OF_RESPONSIBILITY.md) - Complete pattern documentation
-- [CHAIN_EXAMPLE.md](./AgentFramework.Factory.TestConsole/CHAIN_EXAMPLE.md) - Usage examples and test cases
-
----
-
-## Technical Stack
-
-- **Language:** C# / .NET
-- **Markdown Parser:** Markdig
-- **YAML Parser:** YamlDotNet
-- **Agent Framework:** Microsoft Agent Framework
-- **Target Platform:** .NET 8+
-
----
-
-## Research Resources
-
-### Context7 Documentation
-- `/microsoft/agent-framework` (1,177 code snippets)
-- `/websites/learn_microsoft_en-us_agent-framework` (2,282 snippets, score: 81.2)
-
-### Key Learning Materials
-- Microsoft Agent Framework official documentation
-- GitHub Copilot agent format specification
-- AGENTS.md and MAGI standards
-- Markdig and YamlDotNet usage patterns
-- Real-world agent configuration examples
-
----
-
-## Next Steps
-
-1. **Experiment with Markdig + YamlDotNet** - Create proof-of-concept parser
-2. **Define agent markdown schema** - Establish structure and conventions
-3. **Build minimal factory** - Convert simple markdown to Agent Framework objects
-4. **Create sample agents** - Test with various agent types and configurations
-5. **Iterate and refine** - Improve based on real-world usage patterns
-
----
-
-## Questions to Explore
-
-1. Should we support both GitHub Copilot format AND custom extensions?
-2. How to handle tool definitions - inline markdown vs. external references?
-3. What level of validation should occur at parse time vs. runtime?
-4. Should we support agent templates and inheritance in markdown?
-5. How to integrate with existing Agent Framework tooling and workflows?
-
----
-
-## License & Contributing
-
-_To be determined based on project scope and organizational requirements._
-
----
-
-**Last Updated:** 2026-01-30  
-**Project Status:** Phase 3 Complete - Core Implementation with Chain of Responsibility Pattern
+Contributions are welcome!  Please open issues or pull requests in the repository.  The project follows the [MIT License](https://opensource.org/licenses/MIT) unless otherwise noted.
